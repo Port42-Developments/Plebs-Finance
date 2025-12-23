@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, CreditCard as CreditCardIcon, Receipt, FileText, Target, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, CreditCard as CreditCardIcon, Target, TrendingUp, TrendingDown } from 'lucide-react';
 import { api } from '../api';
-import { CashflowEntry, CreditCard, Expense, Bill, Goal } from '../types';
-import { format, parseISO } from 'date-fns';
+import { CashflowEntry, CreditCard, Bill, Goal } from '../types';
+import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Dashboard() {
   const [cashflow, setCashflow] = useState<CashflowEntry[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<any>({ currency: 'NZD', timezone: 'Pacific/Auckland' });
@@ -20,17 +19,15 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [cf, cc, exp, b, g, p] = await Promise.all([
+      const [cf, cc, b, g, p] = await Promise.all([
         api.getCashflow(),
         api.getCreditCards(),
-        api.getExpenses(),
         api.getBills(),
         api.getGoals(),
         api.getProfile(),
       ]);
       setCashflow(cf);
       setCreditCards(cc);
-      setExpenses(exp);
       setBills(b);
       setGoals(g);
       setProfile(p);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, X, Target } from 'lucide-react';
 import { api } from '../api';
 import { Goal } from '../types';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Goals() {

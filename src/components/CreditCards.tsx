@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Calculator, CreditCard } from 'lucide-react';
+import { Plus, X, CreditCard } from 'lucide-react';
 import { api } from '../api';
 import { CreditCard as CreditCardType } from '../types';
-import { format, parseISO, differenceInWeeks, differenceInDays } from 'date-fns';
+import { parseISO, differenceInWeeks, differenceInDays } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 export default function CreditCards() {
