@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, CreditCard } from 'lucide-react';
+import { Plus, X, CreditCard, DollarSign } from 'lucide-react';
 import { api } from '../api';
 import { CreditCard as CreditCardType } from '../types';
 import { parseISO, differenceInWeeks, differenceInDays } from 'date-fns';
@@ -10,7 +10,9 @@ export default function CreditCards() {
   const [profile, setProfile] = useState<any>({ currency: 'NZD', timezone: 'Pacific/Auckland' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [cardForm, setCardForm] = useState({ name: '' });
@@ -19,6 +21,11 @@ export default function CreditCards() {
     amount: '',
     interestFreeMonths: '',
     interestFreeEndDate: '',
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -93,6 +100,8 @@ export default function CreditCards() {
         interestFreeMonths: parseInt(planForm.interestFreeMonths),
         interestFreeEndDate: planForm.interestFreeEndDate,
         weeklyPayment,
+        payments: [],
+        remainingBalance: amount,
       };
 
       await api.updateCreditCard(selectedCardId, {
@@ -140,8 +149,32 @@ export default function CreditCards() {
     }
   };
 
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCardId || !selectedPlanId) return;
+
+    try {
+      await api.addPlanPayment(
+        selectedCardId,
+        selectedPlanId,
+        parseFloat(paymentForm.amount),
+        paymentForm.date
+      );
+      setPaymentForm({ amount: '', date: new Date().toISOString().split('T')[0] });
+      setShowPaymentModal(false);
+      setSelectedCardId(null);
+      setSelectedPlanId(null);
+      loadData();
+    } catch (error) {
+      alert('Failed to add payment');
+    }
+  };
+
   const totalDebt = cards.reduce((sum, card) => {
-    return sum + card.plans.reduce((planSum, plan) => planSum + plan.amount, 0);
+    return sum + card.plans.reduce((planSum, plan) => {
+      const remaining = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+      return planSum + remaining;
+    }, 0);
   }, 0);
 
   const totalWeeklyPayments = cards.reduce((sum, card) => {
@@ -224,6 +257,9 @@ export default function CreditCards() {
                     {card.plans.map((plan) => {
                       const weeksLeft = differenceInWeeks(parseISO(plan.interestFreeEndDate), new Date());
                       const daysLeft = differenceInDays(parseISO(plan.interestFreeEndDate), new Date());
+                      const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                      const totalPaid = plan.amount - remainingBalance;
+                      const payments = plan.payments || [];
 
                       return (
                         <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
@@ -231,19 +267,48 @@ export default function CreditCards() {
                             <div className="flex-1">
                               <h3 className="font-semibold">{plan.name}</h3>
                               <p className="text-sm text-gray-600">
-                                Amount: {formatCurrency(plan.amount)}
+                                Original: {formatCurrency(plan.amount)} | Remaining: <span className="font-semibold text-red-600">{formatCurrency(remainingBalance)}</span>
                               </p>
+                              {totalPaid > 0 && (
+                                <p className="text-sm text-green-600">
+                                  Paid: {formatCurrency(totalPaid)}
+                                </p>
+                              )}
                               <p className="text-sm text-gray-600">
                                 Interest-free until: {formatDate(plan.interestFreeEndDate)}
                               </p>
                               <p className="text-sm text-gray-600">
                                 {weeksLeft > 0 ? `${weeksLeft} weeks` : `${daysLeft} days`} remaining
                               </p>
+                              {payments.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  <p className="text-xs font-semibold text-gray-500 mb-1">Payment History:</p>
+                                  {payments.slice(-3).map((payment) => (
+                                    <p key={payment.id} className="text-xs text-gray-600">
+                                      {formatDate(payment.date)}: {formatCurrency(payment.amount)}
+                                    </p>
+                                  ))}
+                                  {payments.length > 3 && (
+                                    <p className="text-xs text-gray-500">+{payments.length - 3} more</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold text-orange-600">
                                 {formatCurrency(plan.weeklyPayment || 0)}/week
                               </p>
+                              <button
+                                onClick={() => {
+                                  setSelectedCardId(card.id);
+                                  setSelectedPlanId(plan.id);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="mt-2 bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 flex items-center gap-1"
+                              >
+                                <DollarSign className="w-3 h-3" />
+                                Pay
+                              </button>
                               <button
                                 onClick={() => handleDeletePlan(card.id, plan.id)}
                                 className="text-red-600 hover:text-red-800 mt-2"
@@ -364,6 +429,57 @@ export default function CreditCards() {
                   className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
                 >
                   Add Plan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedCardId && selectedPlanId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">Make Payment</h2>
+            <form onSubmit={handleAddPayment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                <input
+                  type="date"
+                  value={paymentForm.date}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setSelectedCardId(null);
+                    setSelectedPlanId(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  Make Payment
                 </button>
               </div>
             </form>

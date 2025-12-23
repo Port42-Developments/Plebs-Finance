@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Target } from 'lucide-react';
+import { Plus, X, Target, Wallet } from 'lucide-react';
 import { api } from '../api';
-import { Goal } from '../types';
+import { Goal, Account } from '../types';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [profile, setProfile] = useState<any>({ currency: 'NZD', timezone: 'Pacific/Auckland' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -16,6 +17,7 @@ export default function Goals() {
     targetAmount: '',
     currentAmount: '0',
     targetDate: '',
+    accountId: '',
   });
 
   useEffect(() => {
@@ -24,9 +26,31 @@ export default function Goals() {
 
   const loadData = async () => {
     try {
-      const [g, p] = await Promise.all([api.getGoals(), api.getProfile()]);
-      setGoals(g);
+      const [g, a, p] = await Promise.all([api.getGoals(), api.getAccounts(), api.getProfile()]);
+      setAccounts(a);
       setProfile(p);
+      
+      // Sync goal amounts with linked accounts
+      const updatedGoals = await Promise.all(
+        g.map(async (goal) => {
+          if (goal.accountId) {
+            const account = a.find((acc) => acc.id === goal.accountId);
+            if (account && goal.currentAmount !== account.balance) {
+              // Update goal to match account balance
+              const updated = { ...goal, currentAmount: account.balance };
+              try {
+                await api.updateGoal(goal.id, updated);
+                return updated;
+              } catch {
+                return goal;
+              }
+            }
+          }
+          return goal;
+        })
+      );
+      
+      setGoals(updatedGoals);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -52,11 +76,22 @@ export default function Goals() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let currentAmount = parseFloat(formData.currentAmount);
+      
+      // If account is linked, use account balance
+      if (formData.accountId) {
+        const account = accounts.find((a) => a.id === formData.accountId);
+        if (account) {
+          currentAmount = account.balance;
+        }
+      }
+      
       await api.addGoal({
         name: formData.name,
         targetAmount: parseFloat(formData.targetAmount),
-        currentAmount: parseFloat(formData.currentAmount),
+        currentAmount,
         targetDate: formData.targetDate || undefined,
+        accountId: formData.accountId || undefined,
       });
       setShowAddModal(false);
       setFormData({
@@ -64,6 +99,7 @@ export default function Goals() {
         targetAmount: '',
         currentAmount: '0',
         targetDate: '',
+        accountId: '',
       });
       loadData();
     } catch (error) {
@@ -83,10 +119,28 @@ export default function Goals() {
 
   const handleUpdateProgress = async (goal: Goal, newAmount: number) => {
     try {
-      await api.updateGoal(goal.id, {
-        ...goal,
-        currentAmount: newAmount,
-      });
+      // If goal is linked to account, update account balance instead
+      if (goal.accountId) {
+        const account = accounts.find((a) => a.id === goal.accountId);
+        if (account) {
+          const difference = newAmount - goal.currentAmount;
+          if (difference !== 0) {
+            await api.addAccountTransaction({
+              accountId: goal.accountId,
+              amount: Math.abs(difference),
+              type: difference > 0 ? 'deposit' : 'withdrawal',
+              description: `Goal: ${goal.name}`,
+              date: new Date().toISOString().split('T')[0],
+            });
+          }
+        }
+      } else {
+        // Update goal directly if not linked
+        await api.updateGoal(goal.id, {
+          ...goal,
+          currentAmount: newAmount,
+        });
+      }
       loadData();
     } catch (error) {
       alert('Failed to update goal');
@@ -134,6 +188,14 @@ export default function Goals() {
                     <p className="text-sm text-gray-600">
                       {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                     </p>
+                    {goal.accountId && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Wallet className="w-3 h-3 text-blue-600" />
+                        <p className="text-xs text-blue-600">
+                          Linked: {accounts.find((a) => a.id === goal.accountId)?.name || 'Unknown'}
+                        </p>
+                      </div>
+                    )}
                     {goal.targetDate && (
                       <p className="text-sm text-gray-500 mt-1">
                         Target: {formatDate(goal.targetDate)}
@@ -232,15 +294,35 @@ export default function Goals() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Amount</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.currentAmount}
-                  onChange={(e) => setFormData({ ...formData, currentAmount: e.target.value })}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Link to Account (Optional)</label>
+                <select
+                  value={formData.accountId}
+                  onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
+                >
+                  <option value="">No account (manual tracking)</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({formatCurrency(account.balance)})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  If linked, goal will automatically track the account balance
+                </p>
               </div>
+              {!formData.accountId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Amount</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.currentAmount}
+                    onChange={(e) => setFormData({ ...formData, currentAmount: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Target Date (Optional)</label>
                 <input

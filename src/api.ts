@@ -64,5 +64,19 @@ export const api = {
     if (!response.ok) throw new Error('Failed to parse statement');
     return response.json();
   },
+  
+  // Accounts
+  getAccounts: () => fetchAPI('accounts'),
+  addAccount: (account: any) => fetchAPI('accounts', { method: 'POST', body: JSON.stringify(account) }),
+  updateAccount: (id: string, account: any) => fetchAPI(`accounts/${id}`, { method: 'PUT', body: JSON.stringify(account) }),
+  deleteAccount: (id: string) => fetchAPI(`accounts/${id}`, { method: 'DELETE' }),
+  
+  // Account Transactions
+  addAccountTransaction: (transaction: any) => fetchAPI('accounts/transactions', { method: 'POST', body: JSON.stringify(transaction) }),
+  getAccountTransactions: (accountId: string) => fetchAPI(`accounts/${accountId}/transactions`),
+  
+  // Plan Payments
+  addPlanPayment: (cardId: string, planId: string, amount: number, date?: string) => 
+    fetchAPI('credit-cards/payments', { method: 'POST', body: JSON.stringify({ cardId, planId, amount, date }) }),
 };
 

@@ -14,6 +14,13 @@ export interface CashflowEntry {
   createdAt: string;
 }
 
+export interface PlanPayment {
+  id: string;
+  amount: number;
+  date: string;
+  createdAt: string;
+}
+
 export interface CreditCardPlan {
   id: string;
   name: string;
@@ -21,6 +28,8 @@ export interface CreditCardPlan {
   interestFreeMonths: number;
   interestFreeEndDate: string;
   weeklyPayment?: number;
+  payments: PlanPayment[];
+  remainingBalance: number;
 }
 
 export interface CreditCard {
@@ -50,12 +59,31 @@ export interface Bill {
   createdAt: string;
 }
 
+export interface Account {
+  id: string;
+  name: string;
+  balance: number;
+  type: 'checking' | 'savings' | 'investment' | 'other';
+  createdAt: string;
+}
+
+export interface AccountTransaction {
+  id: string;
+  accountId: string;
+  amount: number;
+  type: 'deposit' | 'withdrawal';
+  description: string;
+  date: string;
+  createdAt: string;
+}
+
 export interface Goal {
   id: string;
   name: string;
   targetAmount: number;
   currentAmount: number;
   targetDate?: string;
+  accountId?: string; // Linked account ID
   createdAt: string;
 }
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Cashflow from './components/Cashflow';
+import Accounts from './components/Accounts';
 import CreditCards from './components/CreditCards';
 import Expenses from './components/Expenses';
 import Bills from './components/Bills';
@@ -46,6 +47,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/cashflow" element={<Cashflow />} />
+          <Route path="/accounts" element={<Accounts />} />
           <Route path="/credit-cards" element={<CreditCards />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/bills" element={<Bills />} />

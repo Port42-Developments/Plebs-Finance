@@ -223,6 +223,126 @@ export async function onRequest(context: any) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
+    // Accounts endpoints
+    if (path === 'accounts' && method === 'GET') {
+      const accounts = await kv.get('accounts', 'json') || [];
+      return new Response(JSON.stringify(accounts), { headers });
+    }
+
+    if (path === 'accounts' && method === 'POST') {
+      const account = await request.json();
+      const accounts = (await kv.get('accounts', 'json')) || [];
+      account.id = Date.now().toString();
+      account.balance = account.balance || 0;
+      account.createdAt = new Date().toISOString();
+      accounts.push(account);
+      await kv.put('accounts', JSON.stringify(accounts));
+      return new Response(JSON.stringify(account), { headers });
+    }
+
+    if (path.startsWith('accounts/') && method === 'PUT') {
+      const id = path.split('/')[1];
+      const updatedAccount = await request.json();
+      const accounts = (await kv.get('accounts', 'json')) || [];
+      const index = accounts.findIndex((a: any) => a.id === id);
+      if (index !== -1) {
+        accounts[index] = { ...accounts[index], ...updatedAccount };
+        await kv.put('accounts', JSON.stringify(accounts));
+        return new Response(JSON.stringify(accounts[index]), { headers });
+      }
+      return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
+    }
+
+    if (path.startsWith('accounts/') && method === 'DELETE') {
+      const id = path.split('/')[1];
+      const accounts = (await kv.get('accounts', 'json')) || [];
+      const filtered = accounts.filter((a: any) => a.id !== id);
+      await kv.put('accounts', JSON.stringify(filtered));
+      return new Response(JSON.stringify({ success: true }), { headers });
+    }
+
+    // Account transactions endpoints
+    if (path === 'accounts/transactions' && method === 'POST') {
+      const transaction = await request.json();
+      const accounts = (await kv.get('accounts', 'json')) || [];
+      const accountIndex = accounts.findIndex((a: any) => a.id === transaction.accountId);
+      
+      if (accountIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Account not found' }), { status: 404, headers });
+      }
+
+      // Update account balance
+      if (transaction.type === 'deposit') {
+        accounts[accountIndex].balance += transaction.amount;
+      } else if (transaction.type === 'withdrawal') {
+        accounts[accountIndex].balance -= transaction.amount;
+      }
+
+      await kv.put('accounts', JSON.stringify(accounts));
+
+      // Store transaction
+      const transactions = (await kv.get('account-transactions', 'json')) || [];
+      transaction.id = Date.now().toString();
+      transaction.createdAt = new Date().toISOString();
+      transactions.push(transaction);
+      await kv.put('account-transactions', JSON.stringify(transactions));
+
+      return new Response(JSON.stringify(transaction), { headers });
+    }
+
+    if (path.includes('/transactions') && method === 'GET') {
+      const parts = path.split('/');
+      if (parts.length === 3 && parts[0] === 'accounts' && parts[2] === 'transactions') {
+        const accountId = parts[1];
+        const transactions = (await kv.get('account-transactions', 'json')) || [];
+        const filtered = transactions.filter((t: any) => t.accountId === accountId);
+        return new Response(JSON.stringify(filtered), { headers });
+      }
+    }
+
+    // Plan payment endpoints
+    if (path === 'credit-cards/payments' && method === 'POST') {
+      const { cardId, planId, amount, date } = await request.json();
+      const cards = (await kv.get('credit-cards', 'json')) || [];
+      const cardIndex = cards.findIndex((c: any) => c.id === cardId);
+      
+      if (cardIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Card not found' }), { status: 404, headers });
+      }
+
+      const planIndex = cards[cardIndex].plans.findIndex((p: any) => p.id === planId);
+      if (planIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404, headers });
+      }
+
+      const plan = cards[cardIndex].plans[planIndex];
+      
+      // Initialize payments array if it doesn't exist
+      if (!plan.payments) {
+        plan.payments = [];
+      }
+      if (plan.remainingBalance === undefined) {
+        plan.remainingBalance = plan.amount;
+      }
+
+      // Add payment
+      const payment = {
+        id: Date.now().toString(),
+        amount: parseFloat(amount),
+        date: date || new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+      };
+      plan.payments.push(payment);
+
+      // Update remaining balance
+      plan.remainingBalance = Math.max(0, plan.remainingBalance - payment.amount);
+
+      cards[cardIndex].plans[planIndex] = plan;
+      await kv.put('credit-cards', JSON.stringify(cards));
+
+      return new Response(JSON.stringify(payment), { headers });
+    }
+
     // Bank statement parsing endpoint
     if (path === 'bank-statement/parse' && method === 'POST') {
       const formData = await request.formData();

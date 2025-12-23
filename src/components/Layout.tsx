@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, DollarSign, CreditCard, Receipt, FileText, Target, User } from 'lucide-react';
+import { Home, DollarSign, CreditCard, Receipt, FileText, Target, User, Wallet } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/cashflow', icon: DollarSign, label: 'Cashflow' },
+    { path: '/accounts', icon: Wallet, label: 'Accounts' },
     { path: '/credit-cards', icon: CreditCard, label: 'Credit Cards' },
     { path: '/expenses', icon: Receipt, label: 'Expenses' },
     { path: '/bills', icon: FileText, label: 'Bills' },
