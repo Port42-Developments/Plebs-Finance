@@ -78,5 +78,7 @@ export const api = {
   // Plan Payments
   addPlanPayment: (cardId: string, planId: string, amount: number, date?: string) => 
     fetchAPI('credit-cards/payments', { method: 'POST', body: JSON.stringify({ cardId, planId, amount, date }) }),
+  deletePlanPayment: (cardId: string, planId: string, paymentId: string) =>
+    fetchAPI('credit-cards/payments', { method: 'DELETE', body: JSON.stringify({ cardId, planId, paymentId }) }),
 };
 

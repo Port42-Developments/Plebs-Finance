@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, CreditCard, DollarSign } from 'lucide-react';
+import { Plus, X, CreditCard, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../api';
 import { CreditCard as CreditCardType } from '../types';
 import { parseISO, differenceInWeeks, differenceInDays } from 'date-fns';
@@ -13,6 +13,7 @@ export default function CreditCards() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [showPaidOffPlans, setShowPaidOffPlans] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(true);
 
   const [cardForm, setCardForm] = useState({ name: '' });
@@ -170,6 +171,17 @@ export default function CreditCards() {
     }
   };
 
+  const handleDeletePayment = async (cardId: string, planId: string, paymentId: string) => {
+    if (!confirm('Delete this payment? This will restore the amount to the remaining balance.')) return;
+    
+    try {
+      await api.deletePlanPayment(cardId, planId, paymentId);
+      loadData();
+    } catch (error) {
+      alert('Failed to delete payment');
+    }
+  };
+
   const totalDebt = cards.reduce((sum, card) => {
     return sum + card.plans.reduce((planSum, plan) => {
       const remaining = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
@@ -256,76 +268,177 @@ export default function CreditCards() {
                 {card.plans.length === 0 ? (
                   <p className="text-gray-500 text-sm">No plans added</p>
                 ) : (
-                  <div className="space-y-3 mt-4">
-                    {card.plans.map((plan) => {
-                      const weeksLeft = differenceInWeeks(parseISO(plan.interestFreeEndDate), new Date());
-                      const daysLeft = differenceInDays(parseISO(plan.interestFreeEndDate), new Date());
-                      const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
-                      const totalPaid = plan.amount - remainingBalance;
-                      const payments = plan.payments || [];
+                  <>
+                    {/* Active Plans */}
+                    <div className="space-y-3 mt-4">
+                      {card.plans
+                        .filter((plan) => {
+                          const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                          return remainingBalance > 0;
+                        })
+                        .map((plan) => {
+                          const weeksLeft = differenceInWeeks(parseISO(plan.interestFreeEndDate), new Date());
+                          const daysLeft = differenceInDays(parseISO(plan.interestFreeEndDate), new Date());
+                          const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                          const totalPaid = plan.amount - remainingBalance;
+                          const payments = plan.payments || [];
 
-                      return (
-                        <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h3 className="font-semibold">{plan.name}</h3>
-                              <p className="text-sm text-gray-600">
-                                Original: {formatCurrency(plan.amount)} | Remaining: <span className="font-semibold text-red-600">{formatCurrency(remainingBalance)}</span>
-                              </p>
-                              {totalPaid > 0 && (
-                                <p className="text-sm text-green-600">
-                                  Paid: {formatCurrency(totalPaid)}
-                                </p>
-                              )}
-                              <p className="text-sm text-gray-600">
-                                Interest-free until: {formatDate(plan.interestFreeEndDate)}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {weeksLeft > 0 ? `${weeksLeft} weeks` : `${daysLeft} days`} remaining
-                              </p>
-                              {payments.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                  <p className="text-xs font-semibold text-gray-700 mb-2">Payment History ({payments.length}):</p>
-                                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                                    {payments
-                                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                      .map((payment) => (
-                                        <div key={payment.id} className="flex justify-between items-center text-xs">
-                                          <span className="text-gray-600">{formatDate(payment.date)}</span>
-                                          <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
-                                        </div>
-                                      ))}
-                                  </div>
+                          return (
+                            <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold">{plan.name}</h3>
+                                  <p className="text-sm text-gray-600">
+                                    Original: {formatCurrency(plan.amount)} | Remaining: <span className="font-semibold text-red-600">{formatCurrency(remainingBalance)}</span>
+                                  </p>
+                                  {totalPaid > 0 && (
+                                    <p className="text-sm text-green-600">
+                                      Paid: {formatCurrency(totalPaid)}
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-gray-600">
+                                    Interest-free until: {formatDate(plan.interestFreeEndDate)}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {weeksLeft > 0 ? `${weeksLeft} weeks` : `${daysLeft} days`} remaining
+                                  </p>
+                                  {payments.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      <p className="text-xs font-semibold text-gray-700 mb-2">Payment History ({payments.length}):</p>
+                                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                                        {payments
+                                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                          .map((payment) => (
+                                            <div key={payment.id} className="flex justify-between items-center text-xs group">
+                                              <span className="text-gray-600">{formatDate(payment.date)}</span>
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
+                                                <button
+                                                  onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
+                                                  className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 transition-opacity"
+                                                  title="Delete payment"
+                                                >
+                                                  <X className="w-3 h-3" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-orange-600">
+                                    {formatCurrency(plan.weeklyPayment || 0)}/week
+                                  </p>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedCardId(card.id);
+                                      setSelectedPlanId(plan.id);
+                                      setShowPaymentModal(true);
+                                    }}
+                                    className="mt-2 bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 flex items-center gap-1"
+                                  >
+                                    <DollarSign className="w-3 h-3" />
+                                    Pay
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePlan(card.id, plan.id)}
+                                    className="text-red-600 hover:text-red-800 mt-2"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-orange-600">
-                                {formatCurrency(plan.weeklyPayment || 0)}/week
-                              </p>
-                              <button
-                                onClick={() => {
-                                  setSelectedCardId(card.id);
-                                  setSelectedPlanId(plan.id);
-                                  setShowPaymentModal(true);
-                                }}
-                                className="mt-2 bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 flex items-center gap-1"
-                              >
-                                <DollarSign className="w-3 h-3" />
-                                Pay
-                              </button>
-                              <button
-                                onClick={() => handleDeletePlan(card.id, plan.id)}
-                                className="text-red-600 hover:text-red-800 mt-2"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Paid Off Plans (Collapsible) */}
+                    {card.plans.filter((plan) => {
+                      const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                      return remainingBalance === 0;
+                    }).length > 0 && (
+                      <div className="mt-4">
+                        <button
+                          onClick={() => setShowPaidOffPlans({ ...showPaidOffPlans, [card.id]: !showPaidOffPlans[card.id] })}
+                          className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-800 w-full"
+                        >
+                          {showPaidOffPlans[card.id] ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                          <span>
+                            Paid Off Plans ({card.plans.filter((plan) => {
+                              const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                              return remainingBalance === 0;
+                            }).length})
+                          </span>
+                        </button>
+                        {showPaidOffPlans[card.id] && (
+                          <div className="space-y-3 mt-3">
+                            {card.plans
+                              .filter((plan) => {
+                                const remainingBalance = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+                                return remainingBalance === 0;
+                              })
+                              .map((plan) => {
+                                const payments = plan.payments || [];
+                                return (
+                                  <div key={plan.id} className="border border-green-200 bg-green-50 rounded-lg p-4 opacity-75">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="font-semibold text-green-800">{plan.name}</h3>
+                                          <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-semibold">
+                                            PAID OFF
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          Original: {formatCurrency(plan.amount)} | Paid: <span className="font-semibold text-green-600">{formatCurrency(plan.amount)}</span>
+                                        </p>
+                                        {payments.length > 0 && (
+                                          <div className="mt-3 pt-3 border-t border-green-200">
+                                            <p className="text-xs font-semibold text-gray-700 mb-2">Payment History ({payments.length}):</p>
+                                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                                              {payments
+                                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                .map((payment) => (
+                                                  <div key={payment.id} className="flex justify-between items-center text-xs group">
+                                                    <span className="text-gray-600">{formatDate(payment.date)}</span>
+                                                    <div className="flex items-center gap-2">
+                                                      <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
+                                                      <button
+                                                        onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
+                                                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 transition-opacity"
+                                                        title="Delete payment"
+                                                      >
+                                                        <X className="w-3 h-3" />
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeletePlan(card.id, plan.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

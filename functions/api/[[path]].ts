@@ -360,6 +360,64 @@ export async function onRequest(context: any) {
       return new Response(JSON.stringify(payment), { headers });
     }
 
+    // Delete payment endpoint
+    if (path === 'credit-cards/payments' && method === 'DELETE') {
+      const { cardId, planId, paymentId } = await request.json();
+      const cards = (await kv.get('credit-cards', 'json')) || [];
+      const cardIndex = cards.findIndex((c: any) => c.id === cardId);
+      
+      if (cardIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Card not found' }), { status: 404, headers });
+      }
+
+      const planIndex = cards[cardIndex].plans.findIndex((p: any) => p.id === planId);
+      if (planIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404, headers });
+      }
+
+      const plan = cards[cardIndex].plans[planIndex];
+      
+      if (!plan.payments) {
+        return new Response(JSON.stringify({ error: 'No payments found' }), { status: 404, headers });
+      }
+
+      const paymentIndex = plan.payments.findIndex((p: any) => p.id === paymentId);
+      if (paymentIndex === -1) {
+        return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404, headers });
+      }
+
+      const deletedPayment = plan.payments[paymentIndex];
+      
+      // Remove payment
+      plan.payments.splice(paymentIndex, 1);
+
+      // Recalculate remaining balance (add back the payment amount)
+      if (plan.remainingBalance === undefined) {
+        plan.remainingBalance = plan.amount;
+      }
+      plan.remainingBalance = Math.min(plan.amount, plan.remainingBalance + deletedPayment.amount);
+
+      // Recalculate weekly payment based on remaining balance and time left
+      const now = new Date();
+      const endDate = new Date(plan.interestFreeEndDate);
+      const timeDiff = endDate.getTime() - now.getTime();
+      const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      const weeksLeft = Math.ceil(daysLeft / 7);
+      
+      if (weeksLeft > 0 && plan.remainingBalance > 0) {
+        plan.weeklyPayment = plan.remainingBalance / weeksLeft;
+      } else if (plan.remainingBalance > 0) {
+        plan.weeklyPayment = plan.remainingBalance;
+      } else {
+        plan.weeklyPayment = 0;
+      }
+
+      cards[cardIndex].plans[planIndex] = plan;
+      await kv.put('credit-cards', JSON.stringify(cards));
+
+      return new Response(JSON.stringify({ success: true }), { headers });
+    }
+
     // Bank statement parsing endpoint
     if (path === 'bank-statement/parse' && method === 'POST') {
       const formData = await request.formData();
