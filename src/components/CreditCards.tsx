@@ -175,10 +175,52 @@ export default function CreditCards() {
     if (!confirm('Delete this payment? This will restore the amount to the remaining balance.')) return;
     
     try {
+      // Optimistically update UI
+      const updatedCards = cards.map((card) => {
+        if (card.id !== cardId) return card;
+        return {
+          ...card,
+          plans: card.plans.map((plan) => {
+            if (plan.id !== planId) return plan;
+            const payment = plan.payments?.find((p) => p.id === paymentId);
+            if (!payment) return plan;
+            
+            const updatedPayments = plan.payments.filter((p) => p.id !== paymentId);
+            const currentRemaining = plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount;
+            const newRemaining = Math.min(plan.amount, currentRemaining + payment.amount);
+            
+            // Recalculate weekly payment
+            const now = new Date();
+            const endDate = parseISO(plan.interestFreeEndDate);
+            const weeksLeft = differenceInWeeks(endDate, now);
+            let newWeeklyPayment = 0;
+            if (weeksLeft > 0 && newRemaining > 0) {
+              newWeeklyPayment = newRemaining / weeksLeft;
+            } else if (newRemaining > 0) {
+              newWeeklyPayment = newRemaining;
+            }
+            
+            return {
+              ...plan,
+              payments: updatedPayments,
+              remainingBalance: newRemaining,
+              weeklyPayment: newWeeklyPayment,
+            };
+          }),
+        };
+      });
+      
+      setCards(updatedCards);
+      
+      // Then update on server
       await api.deletePlanPayment(cardId, planId, paymentId);
+      
+      // Reload to ensure sync
       loadData();
     } catch (error) {
-      alert('Failed to delete payment');
+      // Revert on error
+      loadData();
+      alert('Failed to delete payment. Please try again.');
     }
   };
 
@@ -314,9 +356,14 @@ export default function CreditCards() {
                                               <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
                                                 <button
-                                                  onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    handleDeletePayment(card.id, plan.id, payment.id);
+                                                  }}
                                                   className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
                                                   title="Delete payment"
+                                                  type="button"
                                                 >
                                                   <X className="w-3 h-3" />
                                                 </button>
@@ -411,9 +458,14 @@ export default function CreditCards() {
                                                     <div className="flex items-center gap-2">
                                                       <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
                                                       <button
-                                                        onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          e.preventDefault();
+                                                          handleDeletePayment(card.id, plan.id, payment.id);
+                                                        }}
                                                         className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
                                                         title="Delete payment"
+                                                        type="button"
                                                       >
                                                         <X className="w-3 h-3" />
                                                       </button>
