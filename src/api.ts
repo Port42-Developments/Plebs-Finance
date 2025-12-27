@@ -78,7 +78,17 @@ export const api = {
   // Plan Payments
   addPlanPayment: (cardId: string, planId: string, amount: number, date?: string) => 
     fetchAPI('credit-cards/payments', { method: 'POST', body: JSON.stringify({ cardId, planId, amount, date }) }),
-  deletePlanPayment: (cardId: string, planId: string, paymentId: string) =>
-    fetchAPI('credit-cards/payments', { method: 'DELETE', body: JSON.stringify({ cardId, planId, paymentId }) }),
+  deletePlanPayment: async (cardId: string, planId: string, paymentId: string) => {
+    const response = await fetch(`${API_BASE}/credit-cards/payments`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId, planId, paymentId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || 'Request failed');
+    }
+    return response.json();
+  },
 };
 

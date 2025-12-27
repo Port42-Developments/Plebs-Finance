@@ -15,6 +15,7 @@ export default function CreditCards() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [showPaidOffPlans, setShowPaidOffPlans] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(true);
+  const [isDeletingPayment, setIsDeletingPayment] = useState(false);
 
   const [cardForm, setCardForm] = useState({ name: '' });
   const [planForm, setPlanForm] = useState({
@@ -36,7 +37,18 @@ export default function CreditCards() {
   const loadData = async () => {
     try {
       const [cc, p] = await Promise.all([api.getCreditCards(), api.getProfile()]);
-      setCards(cc);
+      
+      // Normalize cards data - ensure payments arrays exist and remainingBalance is set
+      const normalizedCards = cc.map((card) => ({
+        ...card,
+        plans: (card.plans || []).map((plan) => ({
+          ...plan,
+          payments: plan.payments || [],
+          remainingBalance: plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount,
+        })),
+      }));
+      
+      setCards(normalizedCards);
       setProfile(p);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -228,18 +240,30 @@ export default function CreditCards() {
   const handleDeletePayment = async (cardId: string, planId: string, paymentId: string) => {
     if (!confirm('Delete this payment? This will restore the amount to the remaining balance.')) return;
     
+    if (isDeletingPayment) return; // Prevent double-clicks
+    setIsDeletingPayment(true);
+    
     // Store original state for potential revert
     const originalCards = JSON.parse(JSON.stringify(cards));
     
     // Find the payment to delete
     const card = cards.find((c) => c.id === cardId);
-    if (!card) return;
+    if (!card) {
+      setIsDeletingPayment(false);
+      return;
+    }
     const plan = card.plans.find((p) => p.id === planId);
-    if (!plan) return;
+    if (!plan) {
+      setIsDeletingPayment(false);
+      return;
+    }
     const payment = plan.payments?.find((p) => p.id === paymentId);
-    if (!payment) return;
+    if (!payment) {
+      setIsDeletingPayment(false);
+      return;
+    }
     
-    // Optimistically update UI
+    // Optimistically update UI immediately
     const updatedCards = cards.map((card) => {
       if (card.id !== cardId) return card;
       return {
@@ -274,15 +298,22 @@ export default function CreditCards() {
     
     setCards(updatedCards);
     
-    // Update on server - only revert if it fails
+    // Update on server - wait for it to complete
     try {
-      await api.deletePlanPayment(cardId, planId, paymentId);
-      // Success - keep the optimistic update
-      // Don't reload immediately to avoid race conditions with KV
+      const result = await api.deletePlanPayment(cardId, planId, paymentId);
+      
+      // If API returns updated card, use it to ensure sync with KV
+      if (result && result.card) {
+        const syncedCards = cards.map((c) => c.id === result.card.id ? result.card : c);
+        setCards(syncedCards);
+      }
+      // Don't reload - trust the API response or our optimistic update
     } catch (error) {
       // If API call fails, revert the optimistic update
       setCards(originalCards);
       alert('Failed to delete payment. Please try again.');
+    } finally {
+      setIsDeletingPayment(false);
     }
   };
 

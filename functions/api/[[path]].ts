@@ -104,8 +104,20 @@ export async function onRequest(context: any) {
 
     // Credit card plans endpoints
     if (path === 'credit-cards' && method === 'GET') {
-      const cards = await kv.get('credit-cards', 'json') || [];
-      return new Response(JSON.stringify(cards), { headers });
+      const cardsData = await kv.get('credit-cards', 'json');
+      const cards = cardsData || [];
+      
+      // Normalize data - ensure all plans have payments array and remainingBalance
+      const normalizedCards = cards.map((card: any) => ({
+        ...card,
+        plans: (card.plans || []).map((plan: any) => ({
+          ...plan,
+          payments: plan.payments || [],
+          remainingBalance: plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount,
+        })),
+      }));
+      
+      return new Response(JSON.stringify(normalizedCards), { headers });
     }
 
     if (path === 'credit-cards' && method === 'POST') {
@@ -120,10 +132,22 @@ export async function onRequest(context: any) {
     if (path.startsWith('credit-cards/') && method === 'PUT') {
       const id = path.split('/')[1];
       const updatedCard = await request.json();
-      const cards = (await kv.get('credit-cards', 'json')) || [];
+      const cardsData = await kv.get('credit-cards', 'json');
+      const cards = cardsData ? JSON.parse(JSON.stringify(cardsData)) : []; // Deep clone
+      
       const index = cards.findIndex((c: any) => c.id === id);
       if (index !== -1) {
-        cards[index] = { ...cards[index], ...updatedCard };
+        // Ensure plans have payments arrays
+        const normalizedCard = {
+          ...updatedCard,
+          plans: (updatedCard.plans || []).map((plan: any) => ({
+            ...plan,
+            payments: plan.payments || [],
+            remainingBalance: plan.remainingBalance !== undefined ? plan.remainingBalance : plan.amount,
+          })),
+        };
+        
+        cards[index] = normalizedCard;
         await kv.put('credit-cards', JSON.stringify(cards));
         return new Response(JSON.stringify(cards[index]), { headers });
       }
@@ -376,11 +400,17 @@ export async function onRequest(context: any) {
     // Delete payment endpoint
     if (path === 'credit-cards/payments' && method === 'DELETE') {
       const { cardId, planId, paymentId } = await request.json();
+      
+      // Get fresh data from KV
       const cardsData = await kv.get('credit-cards', 'json');
-      const cards = cardsData ? JSON.parse(JSON.stringify(cardsData)) : []; // Deep clone
+      if (!cardsData) {
+        return new Response(JSON.stringify({ error: 'No credit cards found' }), { status: 404, headers });
+      }
+      
+      // Deep clone to avoid mutations
+      const cards = JSON.parse(JSON.stringify(cardsData));
       
       const cardIndex = cards.findIndex((c: any) => c.id === cardId);
-      
       if (cardIndex === -1) {
         return new Response(JSON.stringify({ error: 'Card not found' }), { status: 404, headers });
       }
@@ -392,60 +422,65 @@ export async function onRequest(context: any) {
 
       const originalPlan = cards[cardIndex].plans[planIndex];
       
-      if (!originalPlan.payments || originalPlan.payments.length === 0) {
+      // Ensure payments array exists
+      if (!originalPlan.payments || !Array.isArray(originalPlan.payments)) {
         return new Response(JSON.stringify({ error: 'No payments found' }), { status: 404, headers });
       }
 
-      const paymentIndex = originalPlan.payments.findIndex((p: any) => p.id === paymentId);
-      if (paymentIndex === -1) {
+      const paymentToDelete = originalPlan.payments.find((p: any) => p.id === paymentId);
+      if (!paymentToDelete) {
         return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404, headers });
       }
 
-      const deletedPayment = originalPlan.payments[paymentIndex];
+      // Create completely new structure - no mutations
+      const updatedPayments = originalPlan.payments.filter((p: any) => p.id !== paymentId);
       
-      // Create new plan object with updated payments array
-      const updatedPlan = {
-        ...originalPlan,
-        payments: originalPlan.payments.filter((p: any) => p.id !== paymentId),
-      };
+      const currentRemaining = originalPlan.remainingBalance !== undefined 
+        ? originalPlan.remainingBalance 
+        : originalPlan.amount;
+      
+      const newRemaining = Math.min(originalPlan.amount, currentRemaining + paymentToDelete.amount);
 
-      // Recalculate remaining balance (add back the payment amount)
-      if (updatedPlan.remainingBalance === undefined) {
-        updatedPlan.remainingBalance = updatedPlan.amount;
-      }
-      updatedPlan.remainingBalance = Math.min(updatedPlan.amount, updatedPlan.remainingBalance + deletedPayment.amount);
-
-      // Recalculate weekly payment based on remaining balance and time left
+      // Recalculate weekly payment
       const now = new Date();
-      const endDate = new Date(updatedPlan.interestFreeEndDate);
+      const endDate = new Date(originalPlan.interestFreeEndDate);
       const timeDiff = endDate.getTime() - now.getTime();
       const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
       const weeksLeft = Math.ceil(daysLeft / 7);
       
-      if (weeksLeft > 0 && updatedPlan.remainingBalance > 0) {
-        updatedPlan.weeklyPayment = updatedPlan.remainingBalance / weeksLeft;
-      } else if (updatedPlan.remainingBalance > 0) {
-        updatedPlan.weeklyPayment = updatedPlan.remainingBalance;
-      } else {
-        updatedPlan.weeklyPayment = 0;
+      let newWeeklyPayment = 0;
+      if (weeksLeft > 0 && newRemaining > 0) {
+        newWeeklyPayment = newRemaining / weeksLeft;
+      } else if (newRemaining > 0) {
+        newWeeklyPayment = newRemaining;
       }
 
-      // Create new cards array with updated plan
-      const updatedCards = cards.map((card: any, idx: number) => {
-        if (idx !== cardIndex) return card;
+      // Create new plan object
+      const updatedPlan = {
+        ...originalPlan,
+        payments: updatedPayments,
+        remainingBalance: newRemaining,
+        weeklyPayment: newWeeklyPayment,
+      };
+
+      // Create new cards array
+      const updatedCards = cards.map((card: any) => {
+        if (card.id !== cardId) return card;
         return {
           ...card,
-          plans: card.plans.map((plan: any, pIdx: number) => {
-            if (pIdx !== planIndex) return plan;
+          plans: card.plans.map((plan: any) => {
+            if (plan.id !== planId) return plan;
             return updatedPlan;
           }),
         };
       });
 
-      // Save to KV
+      // Save to KV - ensure it's saved
       await kv.put('credit-cards', JSON.stringify(updatedCards));
-
-      return new Response(JSON.stringify({ success: true }), { headers });
+      
+      // Return the updated card so frontend can sync
+      const updatedCard = updatedCards[cardIndex];
+      return new Response(JSON.stringify({ success: true, card: updatedCard }), { headers });
     }
 
     // Bank statement parsing endpoint
