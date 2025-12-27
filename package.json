@@ -2,6 +2,9 @@
   "name": "plebs-finance",
   "version": "1.0.0",
   "description": "Personal finance and debt management app",
+  "author": "Port42 Developments",
+  "license": "MIT",
+  "copyright": "© 2024 Port42 Developments. All rights reserved.",
   "type": "module",
   "scripts": {
     "dev": "vite",

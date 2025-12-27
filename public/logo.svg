@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="Port42 Developments logo">
+  <defs>
+    <style>
+      :root{
+        --p42-ink:#0F1216;      /* Midnight Charcoal */
+        --p42-slate:#8A94A6;    /* Slate Grey */
+        --p42-accent:#3FA9F5;   /* Port Blue */
+      }
+      .ink{ fill: var(--p42-ink); }
+      .slate{ fill: var(--p42-slate); }
+      .stroke-ink{ stroke: var(--p42-ink); }
+      .stroke-slate{ stroke: var(--p42-slate); }
+      .stroke-accent{ stroke: var(--p42-accent); }
+      text{
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        font-feature-settings: "ss01" 1, "ss02" 1, "kern" 1;
+        letter-spacing: 0.2px;
+      }
+    </style>
+  </defs>
+
+  <!-- ICON -->
+  <g transform="translate(70,40)">
+    <!-- Outer container -->
+    <rect x="0" y="0" width="240" height="240" rx="44" fill="none" class="stroke-ink" stroke-width="10"/>
+
+    <!-- Gateway (port) shape -->
+    <path d="M72 178 V98
+             C72 74 91 56 116 56
+             H124
+             C149 56 168 74 168 98
+             V178"
+          fill="none" class="stroke-ink" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Inner threshold -->
+    <path d="M96 178 V110
+             C96 98 105 90 116 90
+             H124
+             C135 90 144 98 144 110
+             V178"
+          fill="none" class="stroke-slate" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Connection line + nodes (subtle systems/network cue) -->
+    <line x1="168" y1="120" x2="198" y2="120" class="stroke-accent" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="206" cy="120" r="9" fill="var(--p42-accent)"/>
+    <circle cx="206" cy="160" r="9" fill="var(--p42-accent)"/>
+    <line x1="198" y1="120" x2="198" y2="160" class="stroke-accent" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- WORDMARK -->
+  <g transform="translate(360,92)">
+    <!-- Port42 -->
+    <text x="0" y="80" font-size="86" font-weight="700" class="ink">
+      Port<tspan font-weight="750">42</tspan>
+    </text>
+
+    <!-- Developments -->
+    <text x="4" y="138" font-size="34" font-weight="500" class="slate" letter-spacing="3.2">
+      DEVELOPMENTS
+    </text>
+
+    <!-- Accent underline (optional brand detail) -->
+    <rect x="6" y="156" width="210" height="10" rx="5" fill="var(--p42-accent)" opacity="0.95"/>
+  </g>
+</svg>

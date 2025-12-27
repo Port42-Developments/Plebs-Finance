@@ -47,12 +47,10 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-4 rounded-full">
-            <Lock className="w-12 h-12 text-white" />
-          </div>
+          <img src="/logo.svg" alt="Port42 Developments" className="h-16 w-auto" />
         </div>
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
           Plebs Finance
@@ -105,6 +103,11 @@ export default function Login({ onLogin }: LoginProps) {
             </button>
           </p>
         )}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <p className="text-xs text-center text-gray-400">
+            © {new Date().getFullYear()} Port42 Developments. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   );

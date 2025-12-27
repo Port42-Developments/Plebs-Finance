@@ -11,6 +11,8 @@
 
 *Take control of your finances with a simple, secure, and powerful personal finance manager*
 
+**Developed by [Port42 Developments](https://port42.dev)**
+
 [Features](#-features) • [Quick Start](#-quick-start) • [Usage Guide](#-usage-guide) • [Deployment](#-deployment)
 
 </div>
@@ -461,5 +463,11 @@ For issues, questions, or contributions, please [open an issue](https://github.c
 **Built with ❤️ for personal finance management**
 
 [⭐ Star this repo](https://github.com/your-username/Plebs-Finance) if you find it useful!
+
+---
+
+**© 2024 Port42 Developments. All rights reserved.**
+
+*Plebs Finance is developed and maintained by Port42 Developments.*
 
 </div>
