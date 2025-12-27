@@ -309,13 +309,13 @@ export default function CreditCards() {
                                         {payments
                                           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                           .map((payment) => (
-                                            <div key={payment.id} className="flex justify-between items-center text-xs group">
+                                            <div key={payment.id} className="flex justify-between items-center text-xs group hover:bg-gray-50 px-1 py-0.5 rounded">
                                               <span className="text-gray-600">{formatDate(payment.date)}</span>
                                               <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
                                                 <button
                                                   onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
-                                                  className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 transition-opacity"
+                                                  className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
                                                   title="Delete payment"
                                                 >
                                                   <X className="w-3 h-3" />
@@ -406,13 +406,13 @@ export default function CreditCards() {
                                               {payments
                                                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                 .map((payment) => (
-                                                  <div key={payment.id} className="flex justify-between items-center text-xs group">
+                                                  <div key={payment.id} className="flex justify-between items-center text-xs group hover:bg-green-100 px-1 py-0.5 rounded">
                                                     <span className="text-gray-600">{formatDate(payment.date)}</span>
                                                     <div className="flex items-center gap-2">
                                                       <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
                                                       <button
                                                         onClick={() => handleDeletePayment(card.id, plan.id, payment.id)}
-                                                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 transition-opacity"
+                                                        className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
                                                         title="Delete payment"
                                                       >
                                                         <X className="w-3 h-3" />
