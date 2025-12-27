@@ -7,9 +7,9 @@ const getUserId = (): string | null => {
 
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const userId = getUserId();
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
   
   // Add userId to headers if available
