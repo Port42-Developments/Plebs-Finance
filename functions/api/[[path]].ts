@@ -491,15 +491,11 @@ export async function onRequest(context: any) {
       const body = await request.json();
       const { userId, ...expense } = body;
       const expensesKey = userId ? getUserKey(userId, 'expenses') : 'expenses';
-      
-      // POST
-      const { userId: postUserId, ...expense } = body;
-      const postExpensesKey = postUserId ? getUserKey(postUserId, 'expenses') : 'expenses';
-      const expenses = (await kv.get(postExpensesKey, 'json')) || [];
+      const expenses = (await kv.get(expensesKey, 'json')) || [];
       expense.id = Date.now().toString();
       expense.createdAt = new Date().toISOString();
       expenses.push(expense);
-      await kv.put(postExpensesKey, JSON.stringify(expenses));
+      await kv.put(expensesKey, JSON.stringify(expenses));
       return new Response(JSON.stringify(expense), { headers });
     }
 
@@ -526,15 +522,11 @@ export async function onRequest(context: any) {
       const body = await request.json();
       const { userId, ...bill } = body;
       const billsKey = userId ? getUserKey(userId, 'bills') : 'bills';
-      
-      // POST
-      const { userId: postUserId, ...bill } = body;
-      const postBillsKey = postUserId ? getUserKey(postUserId, 'bills') : 'bills';
-      const bills = (await kv.get(postBillsKey, 'json')) || [];
+      const bills = (await kv.get(billsKey, 'json')) || [];
       bill.id = Date.now().toString();
       bill.createdAt = new Date().toISOString();
       bills.push(bill);
-      await kv.put(postBillsKey, JSON.stringify(bills));
+      await kv.put(billsKey, JSON.stringify(bills));
       return new Response(JSON.stringify(bill), { headers });
     }
 
@@ -561,15 +553,11 @@ export async function onRequest(context: any) {
       const body = await request.json();
       const { userId, ...goal } = body;
       const goalsKey = userId ? getUserKey(userId, 'goals') : 'goals';
-      
-      // POST
-      const { userId: postUserId, ...goal } = body;
-      const postGoalsKey = postUserId ? getUserKey(postUserId, 'goals') : 'goals';
-      const goals = (await kv.get(postGoalsKey, 'json')) || [];
+      const goals = (await kv.get(goalsKey, 'json')) || [];
       goal.id = Date.now().toString();
       goal.createdAt = new Date().toISOString();
       goals.push(goal);
-      await kv.put(postGoalsKey, JSON.stringify(goals));
+      await kv.put(goalsKey, JSON.stringify(goals));
       return new Response(JSON.stringify(goal), { headers });
     }
 
@@ -611,16 +599,12 @@ export async function onRequest(context: any) {
       const body = await request.json();
       const { userId, ...account } = body;
       const accountsKey = userId ? getUserKey(userId, 'accounts') : 'accounts';
-      
-      // POST
-      const { userId: postUserId, ...account } = body;
-      const postAccountsKey = postUserId ? getUserKey(postUserId, 'accounts') : 'accounts';
-      const accounts = (await kv.get(postAccountsKey, 'json')) || [];
+      const accounts = (await kv.get(accountsKey, 'json')) || [];
       account.id = Date.now().toString();
       account.balance = account.balance || 0;
       account.createdAt = new Date().toISOString();
       accounts.push(account);
-      await kv.put(postAccountsKey, JSON.stringify(accounts));
+      await kv.put(accountsKey, JSON.stringify(accounts));
       return new Response(JSON.stringify(account), { headers });
     }
 
