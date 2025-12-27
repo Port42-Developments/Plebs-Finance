@@ -398,6 +398,7 @@ export async function onRequest(context: any) {
 
     // Delete payment endpoint
     if (path === 'credit-cards/payments' && method === 'DELETE') {
+      // UNIQUE MARKER to confirm this code is running
       const body = await request.json();
       const { cardId, planId, paymentId } = body;
       
@@ -412,27 +413,30 @@ export async function onRequest(context: any) {
         return new Response(JSON.stringify({ 
           success: false,
           error: 'Payment not found',
+          codeVersion: 'v2-delete-endpoint',
           paymentId,
           totalPayments: payments.length,
           allPaymentIds: payments.map((p: any) => p.id)
         }), { status: 404, headers });
       }
 
-      // Remove payment from array
+      // Remove payment from array - create new array without the payment
       const paymentToDelete = payments[paymentIndex];
       const updatedPayments = payments.filter((p: any, idx: number) => idx !== paymentIndex);
       
       // Save updated payments back to KV
       await kv.put('plan-payments', JSON.stringify(updatedPayments));
       
-      // Return success with debug info - ALWAYS include this so we can see what happened
+      // Return success with debug info - ALWAYS include codeVersion to confirm this code path
       return new Response(JSON.stringify({ 
         success: true,
+        codeVersion: 'v2-delete-endpoint-2024',
         deletedPaymentId: paymentId,
         beforeCount: payments.length,
         afterCount: updatedPayments.length,
         remainingPaymentIds: updatedPayments.map((p: any) => p.id),
-        deletedPayment: paymentToDelete
+        deletedPayment: paymentToDelete,
+        timestamp: new Date().toISOString()
       }), { headers });
     }
 
