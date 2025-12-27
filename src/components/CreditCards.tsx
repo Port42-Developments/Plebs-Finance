@@ -280,9 +280,12 @@ export default function CreditCards() {
       // Call API immediately - wait for it to complete and save to KV
       const result = await api.deletePlanPayment(cardId, planId, paymentId);
       console.log('[DELETE PAYMENT] API response received:', result);
+      console.log('[DELETE PAYMENT] Full response:', JSON.stringify(result, null, 2));
       console.log('[DELETE PAYMENT] Deleted payment ID:', result?.deletedPaymentId);
       console.log('[DELETE PAYMENT] Remaining payments count:', result?.remainingPaymentsCount);
       console.log('[DELETE PAYMENT] Remaining payment IDs:', result?.remainingPaymentIds);
+      console.log('[DELETE PAYMENT] Verification - still exists?', result?.verification?.stillExists);
+      console.log('[DELETE PAYMENT] Verification - saved count:', result?.verification?.savedCount);
       
       if (result && result.success) {
         console.log('[DELETE PAYMENT] API call successful, waiting 100ms before reload...');

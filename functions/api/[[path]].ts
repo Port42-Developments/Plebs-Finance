@@ -398,76 +398,66 @@ export async function onRequest(context: any) {
 
     // Delete payment endpoint
     if (path === 'credit-cards/payments' && method === 'DELETE') {
-      console.log('[API DELETE] Received DELETE payment request');
       const body = await request.json();
       const { cardId, planId, paymentId } = body;
-      console.log('[API DELETE] Request body:', { cardId, planId, paymentId });
       
       // Get payments from separate storage
-      console.log('[API DELETE] Fetching payments from KV...');
       const paymentsData = await kv.get('plan-payments', 'json');
-      console.log('[API DELETE] Payments data from KV:', paymentsData);
       const payments = paymentsData || [];
-      console.log('[API DELETE] Payments array length:', payments.length);
       
-      // Find payment to delete
-      console.log('[API DELETE] Searching for payment to delete...');
-      console.log('[API DELETE] Looking for payment with:', { paymentId, cardId, planId });
-      console.log('[API DELETE] All payments in KV:', JSON.stringify(payments, null, 2));
+      // Debug: Log what we're looking for and what we have
+      const debugInfo = {
+        lookingFor: { paymentId, cardId, planId },
+        totalPayments: payments.length,
+        paymentIds: payments.map((p: any) => p.id),
+        matchingPayments: payments.filter((p: any) => 
+          p.id === paymentId || p.cardId === cardId || p.planId === planId
+        ).map((p: any) => ({ id: p.id, cardId: p.cardId, planId: p.planId }))
+      };
       
-      const paymentIndex = payments.findIndex((p: any) => {
-        const matches = p.id === paymentId && p.cardId === cardId && p.planId === planId;
-        if (p.id === paymentId) {
-          console.log('[API DELETE] Found payment with matching ID:', { 
-            pId: p.id, 
-            pCardId: p.cardId, 
-            pPlanId: p.planId,
-            matchesCardId: p.cardId === cardId,
-            matchesPlanId: p.planId === planId,
-            matches: matches
-          });
-        }
-        return matches;
-      });
-      console.log('[API DELETE] Payment index found:', paymentIndex);
+      // Find payment to delete - must match ALL three: id, cardId, planId
+      const paymentIndex = payments.findIndex((p: any) => 
+        p.id === paymentId && String(p.cardId) === String(cardId) && String(p.planId) === String(planId)
+      );
       
       if (paymentIndex === -1) {
-        console.error('[API DELETE] Payment not found!');
-        console.error('[API DELETE] Available payments:', payments.map((p: any) => ({ 
-          id: p.id, 
-          cardId: p.cardId, 
-          planId: p.planId,
-          idMatch: p.id === paymentId,
-          cardIdMatch: p.cardId === cardId,
-          planIdMatch: p.planId === planId
-        })));
-        return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404, headers });
+        // Try to find by ID only to see if it exists
+        const byIdOnly = payments.findIndex((p: any) => p.id === paymentId);
+        return new Response(JSON.stringify({ 
+          error: 'Payment not found',
+          debug: {
+            ...debugInfo,
+            foundByIdOnly: byIdOnly !== -1,
+            paymentById: byIdOnly !== -1 ? payments[byIdOnly] : null
+          }
+        }), { status: 404, headers });
       }
 
-      // Remove payment from array - filter by ID only (should be unique)
-      console.log('[API DELETE] Removing payment from array...');
+      // Remove payment from array
       const paymentToDelete = payments[paymentIndex];
-      console.log('[API DELETE] Payment to delete:', paymentToDelete);
-      const updatedPayments = payments.filter((p: any) => p.id !== paymentId);
-      console.log('[API DELETE] Updated payments array length:', updatedPayments.length);
-      console.log('[API DELETE] Remaining payment IDs:', updatedPayments.map((p: any) => p.id));
+      const updatedPayments = payments.filter((p: any, index: number) => index !== paymentIndex);
       
       // Save updated payments back to KV
-      console.log('[API DELETE] Saving to KV...');
-      const saveResult = await kv.put('plan-payments', JSON.stringify(updatedPayments));
-      console.log('[API DELETE] KV put result:', saveResult);
+      await kv.put('plan-payments', JSON.stringify(updatedPayments));
       
-      // Verify it was saved by reading it back
+      // Verify it was saved by reading it back immediately
       const verifyData = await kv.get('plan-payments', 'json');
-      console.log('[API DELETE] Verification - payments in KV after save:', verifyData ? verifyData.length : 'null');
-      console.log('[API DELETE] Verification - payment IDs after save:', verifyData ? verifyData.map((p: any) => p.id) : 'null');
+      const verifyPayments = verifyData || [];
+      const stillExists = verifyPayments.some((p: any) => p.id === paymentId);
       
       // Return success with debug info
       return new Response(JSON.stringify({ 
         success: true,
         deletedPaymentId: paymentId,
+        deletedPayment: paymentToDelete,
         remainingPaymentsCount: updatedPayments.length,
-        remainingPaymentIds: updatedPayments.map((p: any) => p.id)
+        remainingPaymentIds: updatedPayments.map((p: any) => p.id),
+        verification: {
+          savedCount: verifyPayments.length,
+          stillExists: stillExists,
+          verifyPaymentIds: verifyPayments.map((p: any) => p.id)
+        },
+        debug: debugInfo
       }), { headers });
     }
 
