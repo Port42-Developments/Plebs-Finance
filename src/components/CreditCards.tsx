@@ -267,12 +267,32 @@ export default function CreditCards() {
       // Call API immediately - wait for it to complete and save to KV
       const result = await api.deletePlanPayment(cardId, planId, paymentId);
       console.log('[DELETE PAYMENT] API response received:', result);
+      console.log('[DELETE PAYMENT] Deleted payment ID:', result?.deletedPaymentId);
+      console.log('[DELETE PAYMENT] Remaining payments count:', result?.remainingPaymentsCount);
+      console.log('[DELETE PAYMENT] Remaining payment IDs:', result?.remainingPaymentIds);
       
       if (result && result.success) {
-        console.log('[DELETE PAYMENT] API call successful, reloading data...');
+        console.log('[DELETE PAYMENT] API call successful, waiting 100ms before reload...');
+        // Small delay to ensure KV consistency
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('[DELETE PAYMENT] Reloading data...');
         // After successful API call, reload data to get updated state from KV
         await loadData();
         console.log('[DELETE PAYMENT] Data reloaded successfully');
+        
+        // Verify the payment is gone
+        const card = cards.find((c) => c.id === cardId);
+        if (card) {
+          const plan = card.plans.find((p) => p.id === planId);
+          if (plan) {
+            const paymentStillExists = plan.payments?.some((p) => p.id === paymentId);
+            console.log('[DELETE PAYMENT] Payment still exists after reload?', paymentStillExists);
+            if (paymentStillExists) {
+              console.error('[DELETE PAYMENT] ERROR: Payment still exists after deletion and reload!');
+            }
+          }
+        }
       } else {
         console.error('[DELETE PAYMENT] API returned unsuccessful result:', result);
         throw new Error('Delete failed - API returned unsuccessful result');

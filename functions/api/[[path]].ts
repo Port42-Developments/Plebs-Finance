@@ -104,12 +104,17 @@ export async function onRequest(context: any) {
 
     // Credit card plans endpoints
     if (path === 'credit-cards' && method === 'GET') {
+      console.log('[API GET] Fetching credit cards...');
       const cardsData = await kv.get('credit-cards', 'json');
       const cards = cardsData || [];
+      console.log('[API GET] Cards found:', cards.length);
       
       // Get all payments from separate storage
+      console.log('[API GET] Fetching payments from plan-payments KV...');
       const allPaymentsData = await kv.get('plan-payments', 'json');
       const allPayments = allPaymentsData || [];
+      console.log('[API GET] Total payments in KV:', allPayments.length);
+      console.log('[API GET] Payment IDs:', allPayments.map((p: any) => p.id));
       
       // Normalize data - attach payments from separate storage and calculate balances
       const normalizedCards = cards.map((card: any) => ({
@@ -117,6 +122,7 @@ export async function onRequest(context: any) {
         plans: (card.plans || []).map((plan: any) => {
           // Get payments for this plan
           const planPayments = allPayments.filter((p: any) => p.planId === plan.id && p.cardId === card.id);
+          console.log(`[API GET] Plan ${plan.id} (card ${card.id}) has ${planPayments.length} payments:`, planPayments.map((p: any) => p.id));
           
           // Calculate remaining balance from payments
           const totalPaid = planPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
@@ -145,6 +151,7 @@ export async function onRequest(context: any) {
         }),
       }));
       
+      console.log('[API GET] Returning normalized cards');
       return new Response(JSON.stringify(normalizedCards), { headers });
     }
 
@@ -415,17 +422,31 @@ export async function onRequest(context: any) {
         return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404, headers });
       }
 
-      // Remove payment from array
+      // Remove payment from array - filter by ID only (should be unique)
       console.log('[API DELETE] Removing payment from array...');
+      const paymentToDelete = payments[paymentIndex];
+      console.log('[API DELETE] Payment to delete:', paymentToDelete);
       const updatedPayments = payments.filter((p: any) => p.id !== paymentId);
       console.log('[API DELETE] Updated payments array length:', updatedPayments.length);
+      console.log('[API DELETE] Remaining payment IDs:', updatedPayments.map((p: any) => p.id));
       
       // Save updated payments back to KV
       console.log('[API DELETE] Saving to KV...');
-      await kv.put('plan-payments', JSON.stringify(updatedPayments));
-      console.log('[API DELETE] Successfully saved to KV');
+      const saveResult = await kv.put('plan-payments', JSON.stringify(updatedPayments));
+      console.log('[API DELETE] KV put result:', saveResult);
       
-      return new Response(JSON.stringify({ success: true }), { headers });
+      // Verify it was saved by reading it back
+      const verifyData = await kv.get('plan-payments', 'json');
+      console.log('[API DELETE] Verification - payments in KV after save:', verifyData ? verifyData.length : 'null');
+      console.log('[API DELETE] Verification - payment IDs after save:', verifyData ? verifyData.map((p: any) => p.id) : 'null');
+      
+      // Return success with debug info
+      return new Response(JSON.stringify({ 
+        success: true,
+        deletedPaymentId: paymentId,
+        remainingPaymentsCount: updatedPayments.length,
+        remainingPaymentIds: updatedPayments.map((p: any) => p.id)
+      }), { headers });
     }
 
     // Bank statement parsing endpoint
