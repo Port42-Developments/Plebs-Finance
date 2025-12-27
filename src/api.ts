@@ -79,16 +79,39 @@ export const api = {
   addPlanPayment: (cardId: string, planId: string, amount: number, date?: string) => 
     fetchAPI('credit-cards/payments', { method: 'POST', body: JSON.stringify({ cardId, planId, amount, date }) }),
   deletePlanPayment: async (cardId: string, planId: string, paymentId: string) => {
-    const response = await fetch(`${API_BASE}/credit-cards/payments`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardId, planId, paymentId }),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
+    console.log('[API] deletePlanPayment called with:', { cardId, planId, paymentId });
+    console.log('[API] Making DELETE request to:', `${API_BASE}/credit-cards/payments`);
+    
+    try {
+      const response = await fetch(`${API_BASE}/credit-cards/payments`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId, planId, paymentId }),
+      });
+      
+      console.log('[API] Response status:', response.status, response.statusText);
+      console.log('[API] Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[API] Response not OK, error text:', errorText);
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || 'Request failed' };
+        }
+        console.error('[API] Parsed error:', error);
+        throw new Error(error.error || 'Request failed');
+      }
+      
+      const result = await response.json();
+      console.log('[API] Response JSON:', result);
+      return result;
+    } catch (error) {
+      console.error('[API] Exception in deletePlanPayment:', error);
+      throw error;
     }
-    return response.json();
   },
 };
 

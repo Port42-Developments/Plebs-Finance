@@ -391,26 +391,39 @@ export async function onRequest(context: any) {
 
     // Delete payment endpoint
     if (path === 'credit-cards/payments' && method === 'DELETE') {
-      const { cardId, planId, paymentId } = await request.json();
+      console.log('[API DELETE] Received DELETE payment request');
+      const body = await request.json();
+      const { cardId, planId, paymentId } = body;
+      console.log('[API DELETE] Request body:', { cardId, planId, paymentId });
       
       // Get payments from separate storage
+      console.log('[API DELETE] Fetching payments from KV...');
       const paymentsData = await kv.get('plan-payments', 'json');
+      console.log('[API DELETE] Payments data from KV:', paymentsData);
       const payments = paymentsData || [];
+      console.log('[API DELETE] Payments array length:', payments.length);
       
       // Find payment to delete
+      console.log('[API DELETE] Searching for payment to delete...');
       const paymentIndex = payments.findIndex((p: any) => 
         p.id === paymentId && p.cardId === cardId && p.planId === planId
       );
+      console.log('[API DELETE] Payment index found:', paymentIndex);
       
       if (paymentIndex === -1) {
+        console.error('[API DELETE] Payment not found! Available payments:', payments.map((p: any) => ({ id: p.id, cardId: p.cardId, planId: p.planId })));
         return new Response(JSON.stringify({ error: 'Payment not found' }), { status: 404, headers });
       }
 
       // Remove payment from array
+      console.log('[API DELETE] Removing payment from array...');
       const updatedPayments = payments.filter((p: any) => p.id !== paymentId);
+      console.log('[API DELETE] Updated payments array length:', updatedPayments.length);
       
       // Save updated payments back to KV
+      console.log('[API DELETE] Saving to KV...');
       await kv.put('plan-payments', JSON.stringify(updatedPayments));
+      console.log('[API DELETE] Successfully saved to KV');
       
       return new Response(JSON.stringify({ success: true }), { headers });
     }

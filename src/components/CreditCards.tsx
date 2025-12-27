@@ -240,31 +240,53 @@ export default function CreditCards() {
   };
 
   const handleDeletePayment = async (cardId: string, planId: string, paymentId: string, e?: React.MouseEvent) => {
+    console.log('[DELETE PAYMENT] Starting delete payment flow', { cardId, planId, paymentId });
+    
     // Stop event propagation to prevent any parent handlers
     if (e) {
       e.stopPropagation();
       e.preventDefault();
+      console.log('[DELETE PAYMENT] Event propagation stopped');
     }
     
-    if (!confirm('Delete this payment? This will restore the amount to the remaining balance.')) return;
+    if (!confirm('Delete this payment? This will restore the amount to the remaining balance.')) {
+      console.log('[DELETE PAYMENT] User cancelled deletion');
+      return;
+    }
     
-    if (isDeletingPayment) return; // Prevent double-clicks
+    if (isDeletingPayment) {
+      console.log('[DELETE PAYMENT] Already deleting, ignoring duplicate call');
+      return; // Prevent double-clicks
+    }
+    
+    console.log('[DELETE PAYMENT] Setting isDeletingPayment to true');
     setIsDeletingPayment(true);
     
     try {
+      console.log('[DELETE PAYMENT] Calling API deletePlanPayment...');
       // Call API immediately - wait for it to complete and save to KV
       const result = await api.deletePlanPayment(cardId, planId, paymentId);
+      console.log('[DELETE PAYMENT] API response received:', result);
       
       if (result && result.success) {
+        console.log('[DELETE PAYMENT] API call successful, reloading data...');
         // After successful API call, reload data to get updated state from KV
         await loadData();
+        console.log('[DELETE PAYMENT] Data reloaded successfully');
       } else {
-        throw new Error('Delete failed');
+        console.error('[DELETE PAYMENT] API returned unsuccessful result:', result);
+        throw new Error('Delete failed - API returned unsuccessful result');
       }
     } catch (error) {
-      console.error('Failed to delete payment:', error);
-      alert('Failed to delete payment. Please try again.');
+      console.error('[DELETE PAYMENT] Error caught:', error);
+      console.error('[DELETE PAYMENT] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
+      alert('Failed to delete payment. Please try again. Check console for details.');
     } finally {
+      console.log('[DELETE PAYMENT] Setting isDeletingPayment to false');
       setIsDeletingPayment(false);
     }
   };
