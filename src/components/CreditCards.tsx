@@ -277,7 +277,8 @@ export default function CreditCards() {
     // Update on server - only revert if it fails
     try {
       await api.deletePlanPayment(cardId, planId, paymentId);
-      // Success - keep the optimistic update, no reload needed
+      // Success - keep the optimistic update
+      // Don't reload immediately to avoid race conditions with KV
     } catch (error) {
       // If API call fails, revert the optimistic update
       setCards(originalCards);
