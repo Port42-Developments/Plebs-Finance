@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { api } from '../api';
 
