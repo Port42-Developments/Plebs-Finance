@@ -32,9 +32,9 @@ export default function Goals() {
       
       // Sync goal amounts with linked accounts
       const updatedGoals = await Promise.all(
-        g.map(async (goal) => {
+        g.map(async (goal: Goal) => {
           if (goal.accountId) {
-            const account = a.find((acc) => acc.id === goal.accountId);
+            const account = a.find((acc: Account) => acc.id === goal.accountId);
             if (account && goal.currentAmount !== account.balance) {
               // Update goal to match account balance
               const updated = { ...goal, currentAmount: account.balance };

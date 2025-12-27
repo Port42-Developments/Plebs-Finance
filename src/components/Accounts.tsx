@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, ArrowDown, ArrowUp, Wallet } from 'lucide-react';
 import { api } from '../api';
-import { Account, AccountTransaction } from '../types';
-import { parseISO } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
+import { Account } from '../types';
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -47,14 +45,6 @@ export default function Accounts() {
       style: 'currency',
       currency: profile.currency || 'NZD',
     }).format(amount);
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return formatInTimeZone(parseISO(dateStr), profile.timezone || 'Pacific/Auckland', 'dd MMM yyyy');
-    } catch {
-      return dateStr;
-    }
   };
 
   const handleAddAccount = async (e: React.FormEvent) => {
