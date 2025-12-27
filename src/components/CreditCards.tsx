@@ -284,16 +284,18 @@ export default function CreditCards() {
                                 {weeksLeft > 0 ? `${weeksLeft} weeks` : `${daysLeft} days`} remaining
                               </p>
                               {payments.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-gray-200">
-                                  <p className="text-xs font-semibold text-gray-500 mb-1">Payment History:</p>
-                                  {payments.slice(-3).map((payment) => (
-                                    <p key={payment.id} className="text-xs text-gray-600">
-                                      {formatDate(payment.date)}: {formatCurrency(payment.amount)}
-                                    </p>
-                                  ))}
-                                  {payments.length > 3 && (
-                                    <p className="text-xs text-gray-500">+{payments.length - 3} more</p>
-                                  )}
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <p className="text-xs font-semibold text-gray-700 mb-2">Payment History ({payments.length}):</p>
+                                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                                    {payments
+                                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                      .map((payment) => (
+                                        <div key={payment.id} className="flex justify-between items-center text-xs">
+                                          <span className="text-gray-600">{formatDate(payment.date)}</span>
+                                          <span className="font-semibold text-green-600">{formatCurrency(payment.amount)}</span>
+                                        </div>
+                                      ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
