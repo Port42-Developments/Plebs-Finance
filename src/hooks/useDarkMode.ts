@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { api } from '../api';
 
 export function useDarkMode(darkMode?: boolean) {
   useEffect(() => {
