@@ -145,6 +145,112 @@ export async function onRequest(context: any) {
       return new Response(JSON.stringify(safeUsers), { headers });
     }
 
+    // Migrate legacy user endpoint
+    if (path === 'auth/migrate-legacy' && method === 'POST') {
+      const { username, pin } = await request.json();
+      
+      // Check if legacy PIN exists
+      const legacyPin = await kv.get('user:pin');
+      if (!legacyPin || legacyPin !== pin) {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid PIN' }), {
+          status: 401,
+          headers,
+        });
+      }
+
+      // Check if user already exists
+      const users = (await kv.get('users:list', 'json')) || [];
+      const existingUser = users.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
+      if (existingUser) {
+        return new Response(JSON.stringify({ success: false, error: 'Username already exists' }), {
+          status: 400,
+          headers,
+        });
+      }
+
+      // Create new user from legacy account
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newUser = {
+        id: userId,
+        username: username.toLowerCase(),
+        name: username,
+        picture: '',
+        currency: 'NZD',
+        timezone: 'Pacific/Auckland',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Migrate data from legacy keys to user-scoped keys
+      const legacyProfile = await kv.get('user:profile', 'json') || {};
+      if (legacyProfile.name) newUser.name = legacyProfile.name;
+      if (legacyProfile.picture) newUser.picture = legacyProfile.picture;
+      if (legacyProfile.currency) newUser.currency = legacyProfile.currency;
+      if (legacyProfile.timezone) newUser.timezone = legacyProfile.timezone;
+
+      // Store user PIN
+      await kv.put(getUserKey(userId, 'pin'), pin);
+      
+      // Store user profile
+      await kv.put(getUserKey(userId, 'profile'), JSON.stringify({
+        name: newUser.name,
+        picture: newUser.picture,
+        currency: newUser.currency,
+        timezone: newUser.timezone,
+      }));
+
+      // Migrate all data
+      const legacyCashflow = await kv.get('cashflow', 'json') || [];
+      if (legacyCashflow.length > 0) {
+        await kv.put(getUserKey(userId, 'cashflow'), JSON.stringify(legacyCashflow));
+      }
+
+      const legacyCreditCards = await kv.get('credit-cards', 'json') || [];
+      if (legacyCreditCards.length > 0) {
+        await kv.put(getUserKey(userId, 'credit-cards'), JSON.stringify(legacyCreditCards));
+      }
+
+      const legacyPlanPayments = await kv.get('plan-payments', 'json') || [];
+      if (legacyPlanPayments.length > 0) {
+        await kv.put(getUserKey(userId, 'plan-payments'), JSON.stringify(legacyPlanPayments));
+      }
+
+      const legacyAccounts = await kv.get('accounts', 'json') || [];
+      if (legacyAccounts.length > 0) {
+        await kv.put(getUserKey(userId, 'accounts'), JSON.stringify(legacyAccounts));
+      }
+
+      const legacyAccountTransactions = await kv.get('account-transactions', 'json') || [];
+      if (legacyAccountTransactions.length > 0) {
+        await kv.put(getUserKey(userId, 'account-transactions'), JSON.stringify(legacyAccountTransactions));
+      }
+
+      const legacyExpenses = await kv.get('expenses', 'json') || [];
+      if (legacyExpenses.length > 0) {
+        await kv.put(getUserKey(userId, 'expenses'), JSON.stringify(legacyExpenses));
+      }
+
+      const legacyBills = await kv.get('bills', 'json') || [];
+      if (legacyBills.length > 0) {
+        await kv.put(getUserKey(userId, 'bills'), JSON.stringify(legacyBills));
+      }
+
+      const legacyGoals = await kv.get('goals', 'json') || [];
+      if (legacyGoals.length > 0) {
+        await kv.put(getUserKey(userId, 'goals'), JSON.stringify(legacyGoals));
+      }
+
+      // Add to users list
+      users.push(newUser);
+      await kv.put('users:list', JSON.stringify(users));
+
+      // Optionally delete legacy keys (comment out if you want to keep them as backup)
+      // await kv.delete('user:pin');
+      // await kv.delete('user:profile');
+      // etc...
+
+      return new Response(JSON.stringify({ success: true, user: newUser }), { headers });
+    }
+
     // Legacy auth endpoints (for backward compatibility - single user mode)
     if (path === 'auth/verify' && method === 'POST') {
       const { pin, userId } = await request.json();
@@ -161,17 +267,18 @@ export async function onRequest(context: any) {
         });
       }
 
-      // Legacy single-user mode
+      // Legacy single-user mode - check if legacy PIN exists
       const storedPin = await kv.get('user:pin');
       
       if (!storedPin) {
-        // First time setup - create PIN
+        // First time setup - create PIN (but this is now handled by registration)
         await kv.put('user:pin', pin);
-        return new Response(JSON.stringify({ success: true, firstTime: true }), { headers });
+        return new Response(JSON.stringify({ success: true, firstTime: true, needsMigration: false }), { headers });
       }
       
       if (storedPin === pin) {
-        return new Response(JSON.stringify({ success: true }), { headers });
+        // Legacy user exists - they need to migrate
+        return new Response(JSON.stringify({ success: true, needsMigration: true }), { headers });
       }
       
       return new Response(JSON.stringify({ success: false, error: 'Invalid PIN' }), {

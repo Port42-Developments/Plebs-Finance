@@ -37,6 +37,8 @@ export const api = {
   loginUser: (username: string, pin: string) => 
     fetchAPI('auth/login', { method: 'POST', body: JSON.stringify({ username, pin }) }),
   getUsers: () => fetchAPI('users'),
+  migrateLegacyUser: (username: string, pin: string) =>
+    fetchAPI('auth/migrate-legacy', { method: 'POST', body: JSON.stringify({ username, pin }) }),
   
   // Auth (legacy support)
   verifyPin: (pin: string) => fetchAPI('auth/verify', { method: 'POST', body: JSON.stringify({ pin }) }),
