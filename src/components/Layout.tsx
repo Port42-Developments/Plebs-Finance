@@ -75,9 +75,7 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                  Plebs Finance
-                </h1>
+                <img src="/pleb_finance_logo.png" alt="Plebs Finance" className="h-10 w-auto" />
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 {navItems.map((item) => {
@@ -194,10 +192,10 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             {/* Logo and Branding */}
             <div className="flex items-center gap-4">
-              <img src="/logo.svg" alt="Port42 Developments" className="h-12 w-auto" />
+              <img src="/logo_white_small.png" alt="Port42 Developments" className="h-12 w-auto" />
               <div className="h-12 w-px bg-[#8A94A6] opacity-30"></div>
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-white">Plebs Finance</span>
+                <img src="/pleb_finance_logo.png" alt="Plebs Finance" className="h-6 w-auto" />
                 <span className="text-xs text-[#8A94A6]">Developed by Port42 Developments</span>
               </div>
             </div>

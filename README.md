@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💰 Plebs Finance
+![Plebs Finance Banner](https://raw.githubusercontent.com/Port42-Developments/Plebs-Finance/main/public/pleb_finance_banner.png)
 
 **A personal finance and debt management application built for Cloudflare Pages**
 
@@ -11,25 +11,6 @@
 [![Port42](https://img.shields.io/badge/Port42-Developments-3FA9F5?style=flat&labelColor=0F1216)](https://port42.dev)
 
 *Take control of your finances with a simple, secure, and powerful personal finance manager*
-
----
-
-<div style="margin: 2rem 0; padding: 1.5rem; background: #0F1216; border-radius: 8px; border: 1px solid #1a1f26;">
-
-<div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem;">
-  <img src="https://raw.githubusercontent.com/4601Matthew/Plebs-Finance/main/public/logo.svg" alt="Port42 Developments" height="40" />
-  <div style="height: 40px; width: 1px; background: #8A94A6; opacity: 0.3;"></div>
-  <div style="text-align: left;">
-    <div style="color: #ffffff; font-weight: 600; font-size: 14px;">Developed by</div>
-    <div style="color: #3FA9F5; font-weight: 700; font-size: 18px; letter-spacing: 0.5px;">Port42 Developments</div>
-  </div>
-</div>
-
-<div style="color: #8A94A6; font-size: 13px; margin-top: 0.5rem;">
-  Modern software, built right.
-</div>
-
-</div>
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Usage Guide](#-usage-guide) • [Deployment](#-deployment)
 
@@ -482,21 +463,12 @@ For issues, questions, or contributions, please [open an issue](https://github.c
 
 <div style="margin: 2rem 0; padding: 2rem; background: #0F1216; border-radius: 8px; border: 1px solid #1a1f26;">
 
-<div style="display: flex; align-items: center; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-  <img src="https://raw.githubusercontent.com/4601Matthew/Plebs-Finance/main/public/logo.svg" alt="Port42 Developments" height="50" />
-  <div style="height: 50px; width: 1px; background: #8A94A6; opacity: 0.3;"></div>
-  <div style="text-align: left;">
-    <div style="color: #ffffff; font-weight: 600; font-size: 16px; margin-bottom: 0.25rem;">Plebs Finance</div>
-    <div style="color: #8A94A6; font-size: 13px;">Developed by Port42 Developments</div>
-  </div>
-</div>
-
-<div style="color: #8A94A6; font-size: 14px; margin-bottom: 1rem;">
+<div style="color: #8A94A6; font-size: 14px; margin-bottom: 1.5rem;">
   **Built with precision for personal finance management**
 </div>
 
 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
-  <a href="https://github.com/4601Matthew/Plebs-Finance" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">⭐ Star this repo</a>
+  <a href="https://github.com/Port42-Developments/Plebs-Finance" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">⭐ Star this repo</a>
   <span style="color: #8A94A6;">•</span>
   <a href="https://port42.dev" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">Port42 Developments</a>
 </div>

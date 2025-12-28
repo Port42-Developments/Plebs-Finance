@@ -132,11 +132,8 @@ export default function Login({ onLogin }: LoginProps) {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <img src="/logo_black_small.png" alt="Port42 Developments" className="h-16 w-auto" />
+          <img src="/pleb_finance_logo.png" alt="Plebs Finance" className="h-20 w-auto" />
         </div>
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
-          Plebs Finance
-        </h1>
         <p className="text-center text-gray-600 mb-2">
           {needsMigration 
             ? 'Migrate your account - Choose a username' 
@@ -283,7 +280,7 @@ export default function Login({ onLogin }: LoginProps) {
         )}
         <div className="mt-8 pt-6 border-t border-gray-200">
           <div className="flex flex-col items-center gap-3">
-            <img src="/logo.svg" alt="Port42 Developments" className="h-8 w-auto opacity-80" />
+            <img src="/logo_black_small.png" alt="Port42 Developments" className="h-8 w-auto opacity-80" />
             <p className="text-xs text-center text-gray-500">
               © {new Date().getFullYear()} Port42 Developments. All rights reserved.
             </p>
