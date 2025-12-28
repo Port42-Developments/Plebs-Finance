@@ -444,7 +444,7 @@ Potential future features:
 - [ ] Bank account integration (Open Banking API)
 - [ ] Investment tracking
 - [ ] Bill reminders and notifications
-- [ ] Multi-user support
+- [x] ~~Multi-user support~~
 - [ ] Data backup and restore
 - [ ] Dark mode
 - [ ] Advanced bank statement parsing
