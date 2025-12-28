@@ -68,8 +68,8 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="bg-white shadow-lg">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <nav className="bg-white dark:bg-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
@@ -86,8 +86,8 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                       to={item.path}
                       className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                         isActive
-                          ? 'border-purple-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          ? 'border-purple-500 text-gray-900 dark:text-white'
+                          : 'border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
                       }`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
@@ -102,24 +102,24 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                 <div className="relative" ref={profileMenuRef}>
                   <button
                     onClick={handleProfileMenuClick}
-                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium rounded-lg hover:bg-gray-100"
+                    className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <User className="w-4 h-4" />
                     <span className="hidden sm:inline">{currentUser.name || currentUser.username}</span>
                   </button>
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                       {/* User Info */}
-                      <div className="p-3 border-b border-gray-200">
-                        <div className="text-sm font-semibold text-gray-900">{currentUser.name || currentUser.username}</div>
-                        <div className="text-xs text-gray-600">@{currentUser.username}</div>
+                      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{currentUser.name || currentUser.username}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">@{currentUser.username}</div>
                       </div>
                       
                       {/* Profile Link */}
                       <Link
                         to="/profile"
                         onClick={() => setShowProfileMenu(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-200"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700"
                       >
                         <User className="w-4 h-4" />
                         Profile
@@ -128,10 +128,10 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                       {/* Switch User Section */}
                       <div className="max-h-48 overflow-y-auto">
                         {loadingUsers ? (
-                          <div className="p-3 text-sm text-gray-500 text-center">Loading users...</div>
+                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">Loading users...</div>
                         ) : users.length > 1 ? (
                           <>
-                            <div className="p-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">Switch User</div>
+                            <div className="p-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase border-b border-gray-200 dark:border-gray-700">Switch User</div>
                             {users.map((user) => (
                               <button
                                 key={user.id}
@@ -139,12 +139,12 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                                   handleSwitchUser(user);
                                   setShowProfileMenu(false);
                                 }}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                                  user.id === currentUser.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                                  user.id === currentUser.id ? 'bg-purple-50 dark:bg-purple-900 text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
                                 }`}
                               >
                                 <div className="font-medium">{user.name || user.username}</div>
-                                <div className="text-xs text-gray-500">@{user.username}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</div>
                               </button>
                             ))}
                           </>
@@ -152,13 +152,13 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                       </div>
 
                       {/* Logout */}
-                      <div className="p-2 border-t border-gray-200">
+                      <div className="p-2 border-t border-gray-200 dark:border-gray-700">
                         <button
                           onClick={() => {
                             onLogout();
                             setShowProfileMenu(false);
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         >
                           <LogOut className="w-4 h-4" />
                           Logout
@@ -172,7 +172,7 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
           </div>
         </div>
         {/* Mobile menu */}
-        <div className="sm:hidden border-t border-gray-200">
+        <div className="sm:hidden border-t border-gray-200 dark:border-gray-700">
           <div className="pt-2 pb-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -183,8 +183,8 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                   to={item.path}
                   className={`flex items-center px-3 py-2 text-base font-medium ${
                     isActive
-                      ? 'bg-purple-50 border-purple-500 text-purple-700 border-l-4'
-                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 border-l-4'
+                      ? 'bg-purple-50 dark:bg-purple-900 border-purple-500 text-purple-700 dark:text-purple-300 border-l-4'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-800 dark:hover:text-gray-200 border-l-4'
                   }`}
                 >
                   <Icon className="w-5 h-5 mr-3" />

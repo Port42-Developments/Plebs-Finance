@@ -11,16 +11,41 @@ import Goals from './components/Goals';
 import Profile from './components/Profile';
 import Layout from './components/Layout';
 import { User } from './types';
+import { useDarkMode } from './hooks/useDarkMode';
+import { api } from './api';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [darkMode, setDarkMode] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     const userId = localStorage.getItem('currentUserId');
     const authStatus = localStorage.getItem('isAuthenticated');
     setIsAuthenticated(!!userId || authStatus === 'true');
+    
+    // Load dark mode preference if authenticated
+    if (userId || authStatus === 'true') {
+      loadDarkModePreference();
+    } else {
+      // Check localStorage for dark mode preference (for login screen)
+      const saved = localStorage.getItem('darkMode');
+      setDarkMode(saved === 'true');
+    }
   }, []);
+
+  const loadDarkModePreference = async () => {
+    try {
+      const profile = await api.getProfile();
+      setDarkMode(profile.darkMode ?? false);
+    } catch (error) {
+      // If profile not loaded, check localStorage
+      const saved = localStorage.getItem('darkMode');
+      setDarkMode(saved === 'true');
+    }
+  };
+
+  useDarkMode(darkMode);
 
   const handleLogin = (user: User) => {
     localStorage.setItem('isAuthenticated', 'true');
@@ -38,8 +63,8 @@ function App() {
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-gray-900 dark:text-white text-xl">Loading...</div>
       </div>
     );
   }

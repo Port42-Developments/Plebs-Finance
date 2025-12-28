@@ -13,6 +13,7 @@ export interface UserProfile {
   picture: string;
   currency: string;
   timezone: string;
+  darkMode?: boolean;
 }
 
 export interface CashflowEntry {

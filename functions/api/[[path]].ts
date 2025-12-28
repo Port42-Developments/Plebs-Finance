@@ -88,6 +88,7 @@ export async function onRequest(context: any) {
         picture: '',
         currency: 'NZD',
         timezone: 'Pacific/Auckland',
+        darkMode: false,
       }));
 
       // Add to users list
@@ -196,6 +197,7 @@ export async function onRequest(context: any) {
         picture: newUser.picture,
         currency: newUser.currency,
         timezone: newUser.timezone,
+        darkMode: legacyProfile.darkMode || false,
       }));
 
       // Migrate all data
@@ -328,6 +330,7 @@ export async function onRequest(context: any) {
           picture: '',
           currency: 'NZD',
           timezone: 'Pacific/Auckland',
+          darkMode: false,
         };
         return new Response(JSON.stringify(profile), { headers });
       }
@@ -338,6 +341,7 @@ export async function onRequest(context: any) {
         picture: '',
         currency: 'NZD',
         timezone: 'Pacific/Auckland',
+        darkMode: false,
       };
       return new Response(JSON.stringify(profile), { headers });
     }

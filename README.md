@@ -74,6 +74,7 @@
 - **Personalization**: Set your name and preferences
 - **Currency Selection**: Choose from multiple currencies (default: NZD)
 - **Timezone Settings**: Set your timezone for accurate date/time display (default: Pacific/Auckland)
+- **Dark Mode**: Toggle between light and dark themes for a comfortable viewing experience
 - **PIN Management**: Change your PIN anytime from the profile page
 
 ---
@@ -446,7 +447,7 @@ Potential future features:
 - [ ] Bill reminders and notifications
 - [x] ~~Multi-user support~~
 - [ ] Data backup and restore
-- [ ] Dark mode
+- [x] ~~Dark mode~~
 - [ ] Advanced bank statement parsing
 
 ---
