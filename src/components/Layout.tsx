@@ -65,6 +65,7 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
     { path: '/expenses', icon: Receipt, label: 'Expenses' },
     { path: '/bills', icon: FileText, label: 'Bills' },
     { path: '/goals', icon: Target, label: 'Goals' },
+    { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (
