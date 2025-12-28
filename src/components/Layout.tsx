@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, DollarSign, CreditCard, Receipt, FileText, Target, User, Wallet, Users } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, DollarSign, CreditCard, Receipt, FileText, Target, User, Wallet, Users, LogOut } from 'lucide-react';
 import { User as UserType } from '../types';
 import { api } from '../api';
 
@@ -12,26 +12,27 @@ interface LayoutProps {
 
 export default function Layout({ children, onLogout, currentUser }: LayoutProps) {
   const location = useLocation();
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [users, setUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
       }
     };
 
-    if (showUserMenu) {
+    if (showProfileMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showUserMenu]);
+  }, [showProfileMenu]);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -50,11 +51,11 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
     window.location.reload(); // Reload to refresh all data
   };
 
-  const handleUserMenuClick = () => {
-    if (!showUserMenu) {
+  const handleProfileMenuClick = () => {
+    if (!showProfileMenu) {
       loadUsers();
     }
-    setShowUserMenu(!showUserMenu);
+    setShowProfileMenu(!showProfileMenu);
   };
 
   const navItems = [
@@ -65,7 +66,6 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
     { path: '/expenses', icon: Receipt, label: 'Expenses' },
     { path: '/bills', icon: FileText, label: 'Bills' },
     { path: '/goals', icon: Target, label: 'Goals' },
-    { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (
@@ -100,30 +100,46 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
             </div>
             <div className="flex items-center gap-2">
               {currentUser && (
-                <div className="relative" ref={userMenuRef}>
+                <div className="relative" ref={profileMenuRef}>
                   <button
-                    onClick={handleUserMenuClick}
+                    onClick={handleProfileMenuClick}
                     className="flex items-center gap-2 text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium rounded-lg hover:bg-gray-100"
                   >
-                    <Users className="w-4 h-4" />
+                    <User className="w-4 h-4" />
                     <span className="hidden sm:inline">{currentUser.name || currentUser.username}</span>
                   </button>
-                  {showUserMenu && (
+                  {showProfileMenu && (
                     <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      {/* User Info */}
                       <div className="p-3 border-b border-gray-200">
-                        <div className="text-sm font-semibold text-gray-900">Current User</div>
-                        <div className="text-xs text-gray-600">{currentUser.username}</div>
+                        <div className="text-sm font-semibold text-gray-900">{currentUser.name || currentUser.username}</div>
+                        <div className="text-xs text-gray-600">@{currentUser.username}</div>
                       </div>
-                      <div className="max-h-64 overflow-y-auto">
+                      
+                      {/* Profile Link */}
+                      <Link
+                        to="/profile"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        <User className="w-4 h-4" />
+                        Profile
+                      </Link>
+
+                      {/* Switch User Section */}
+                      <div className="max-h-48 overflow-y-auto">
                         {loadingUsers ? (
                           <div className="p-3 text-sm text-gray-500 text-center">Loading users...</div>
-                        ) : users.length > 0 ? (
+                        ) : users.length > 1 ? (
                           <>
-                            <div className="p-2 text-xs font-semibold text-gray-500 uppercase">Switch User</div>
+                            <div className="p-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">Switch User</div>
                             {users.map((user) => (
                               <button
                                 key={user.id}
-                                onClick={() => handleSwitchUser(user)}
+                                onClick={() => {
+                                  handleSwitchUser(user);
+                                  setShowProfileMenu(false);
+                                }}
                                 className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
                                   user.id === currentUser.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
                                 }`}
@@ -133,15 +149,19 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                               </button>
                             ))}
                           </>
-                        ) : (
-                          <div className="p-3 text-sm text-gray-500 text-center">No other users</div>
-                        )}
+                        ) : null}
                       </div>
+
+                      {/* Logout */}
                       <div className="p-2 border-t border-gray-200">
                         <button
-                          onClick={onLogout}
-                          className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
+                          onClick={() => {
+                            onLogout();
+                            setShowProfileMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
                         >
+                          <LogOut className="w-4 h-4" />
                           Logout
                         </button>
                       </div>
@@ -149,12 +169,6 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                   )}
                 </div>
               )}
-              <button
-                onClick={onLogout}
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>
@@ -195,7 +209,7 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
               <img src="/logo_white_small.png" alt="Port42 Developments" className="h-12 w-auto" />
               <div className="h-12 w-px bg-[#8A94A6] opacity-30"></div>
               <div className="flex flex-col">
-                <img src="/pleb_finance_logo.png" alt="Plebs Finance" className="h-6 w-auto" />
+                <img src="/pleb_finance_logo.png" alt="Plebs Finance" className="h-6" style={{ objectFit: 'contain', maxWidth: '200px', width: 'auto' }} />
                 <span className="text-xs text-[#8A94A6]">Developed by Port42 Developments</span>
               </div>
             </div>
