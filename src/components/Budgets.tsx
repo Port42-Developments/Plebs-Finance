@@ -3,7 +3,6 @@ import { Plus, X, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { api } from '../api';
 import { Budget, CashflowEntry, Expense } from '../types';
 import { parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Budgets() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -52,17 +51,8 @@ export default function Budgets() {
     }).format(amount);
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return formatInTimeZone(parseISO(dateStr), profile.timezone || 'Pacific/Auckland', 'dd MMM yyyy');
-    } catch {
-      return dateStr;
-    }
-  };
-
   const calculateSpent = (budget: Budget): number => {
     const now = new Date();
-    const startDate = parseISO(budget.startDate);
     let periodStart: Date;
     let periodEnd: Date;
 
