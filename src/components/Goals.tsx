@@ -152,13 +152,13 @@ export default function Goals() {
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <div className="text-center py-12 dark:text-white">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-white">Goals</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Goals</h1>
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 flex items-center gap-2"
@@ -170,9 +170,9 @@ export default function Goals() {
 
       {/* Goals Grid */}
       {goals.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No goals set yet</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <Target className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-500 dark:text-gray-400">No goals set yet</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -181,30 +181,30 @@ export default function Goals() {
             const remaining = goal.targetAmount - goal.currentAmount;
 
             return (
-              <div key={goal.id} className="bg-white rounded-lg shadow p-6">
+              <div key={goal.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h2 className="text-xl font-semibold mb-2">{goal.name}</h2>
-                    <p className="text-sm text-gray-600">
+                    <h2 className="text-xl font-semibold dark:text-white mb-2">{goal.name}</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                     </p>
                     {goal.accountId && (
                       <div className="flex items-center gap-1 mt-1">
                         <Wallet className="w-3 h-3 text-blue-600" />
-                        <p className="text-xs text-blue-600">
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
                           Linked: {accounts.find((a) => a.id === goal.accountId)?.name || 'Unknown'}
                         </p>
                       </div>
                     )}
                     {goal.targetDate && (
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Target: {formatDate(goal.targetDate)}
                       </p>
                     )}
                   </div>
                   <button
                     onClick={() => handleDelete(goal.id)}
-                    className="text-red-600 hover:text-red-800"
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -212,18 +212,18 @@ export default function Goals() {
 
                 {/* Progress Bar */}
                 <div className="mb-4">
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                     <div
                       className="bg-gradient-to-r from-purple-500 to-indigo-600 h-3 rounded-full transition-all duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{progress.toFixed(1)}% complete</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{progress.toFixed(1)}% complete</p>
                 </div>
 
                 {/* Remaining */}
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600">Remaining</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Remaining</p>
                   <p className="text-lg font-semibold text-orange-600">{formatCurrency(remaining)}</p>
                 </div>
 
@@ -233,7 +233,7 @@ export default function Goals() {
                     type="number"
                     step="0.01"
                     placeholder="Add amount"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         const input = e.target as HTMLInputElement;
@@ -268,37 +268,37 @@ export default function Goals() {
       {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">Add Goal</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold dark:text-white mb-4">Add Goal</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Goal Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Goal Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                   placeholder="e.g., Emergency Fund"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Target Amount</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Amount</label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.targetAmount}
                   onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Link to Account (Optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link to Account (Optional)</label>
                 <select
                   value={formData.accountId}
                   onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">No account (manual tracking)</option>
                   {accounts.map((account) => (
@@ -307,36 +307,36 @@ export default function Goals() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   If linked, goal will automatically track the account balance
                 </p>
               </div>
               {!formData.accountId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Amount</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.currentAmount}
                     onChange={(e) => setFormData({ ...formData, currentAmount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Target Date (Optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Date (Optional)</label>
                 <input
                   type="date"
                   value={formData.targetDate}
                   onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>

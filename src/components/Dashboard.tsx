@@ -60,7 +60,7 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <div className="text-center py-12 dark:text-white">Loading...</div>;
   }
 
   // Calculate totals
@@ -134,18 +134,18 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Net Cashflow</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Net Cashflow</p>
               <p className={`text-2xl font-bold ${netCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatCurrency(netCashflow)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Total: {formatCurrency(totalIncome)} income, {formatCurrency(totalExpenses)} expenses</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total: {formatCurrency(totalIncome)} income, {formatCurrency(totalExpenses)} expenses</p>
             </div>
             {netCashflow >= 0 ? (
               <TrendingUp className="w-8 h-8 text-green-600" />
@@ -155,36 +155,36 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Debt</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Debt</p>
               <p className="text-2xl font-bold text-red-600">{formatCurrency(totalDebt)}</p>
-              <p className="text-xs text-gray-500 mt-1">Weekly: {formatCurrency(totalWeeklyPayments)}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Weekly: {formatCurrency(totalWeeklyPayments)}</p>
             </div>
             <CreditCardIcon className="w-8 h-8 text-red-600" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Account Balance</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Account Balance</p>
               <p className={`text-2xl font-bold ${totalAccountBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatCurrency(totalAccountBalance)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">{accounts.length} account{accounts.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{accounts.length} account{accounts.length !== 1 ? 's' : ''}</p>
             </div>
             <Wallet className="w-8 h-8 text-green-600" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Goals Progress</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Goals Progress</p>
               <p className="text-2xl font-bold text-blue-600">{goalsProgress.toFixed(1)}%</p>
-              <p className="text-xs text-gray-500 mt-1">{goals.length} goal{goals.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{goals.length} goal{goals.length !== 1 ? 's' : ''}</p>
             </div>
             <Target className="w-8 h-8 text-blue-600" />
           </div>
@@ -193,58 +193,58 @@ export default function Dashboard() {
 
       {/* Monthly Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-2">
             <Calendar className="w-5 h-5 text-purple-600" />
-            <p className="text-sm font-semibold text-gray-700">This Month</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">This Month</p>
           </div>
-          <p className="text-sm text-gray-600">Income</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Income</p>
           <p className="text-xl font-bold text-green-600">{formatCurrency(monthIncome)}</p>
-          <p className="text-sm text-gray-600 mt-2">Expenses</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Expenses</p>
           <p className="text-xl font-bold text-red-600">{formatCurrency(monthExpenses)}</p>
-          <p className="text-sm text-gray-600 mt-2">Net</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Net</p>
           <p className={`text-lg font-bold ${monthIncome - monthExpenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(monthIncome - monthExpenses)}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-orange-600" />
-            <p className="text-sm font-semibold text-gray-700">Bills</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bills</p>
           </div>
-          <p className="text-sm text-gray-600">Unpaid</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Unpaid</p>
           <p className="text-xl font-bold text-red-600">{formatCurrency(totalUnpaidBills)}</p>
-          <p className="text-xs text-gray-500 mt-1">{unpaidBills.length} bill{unpaidBills.length !== 1 ? 's' : ''} due</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{unpaidBills.length} bill{unpaidBills.length !== 1 ? 's' : ''} due</p>
           {overdueBills.length > 0 && (
             <p className="text-xs text-red-600 mt-1 font-semibold">{overdueBills.length} overdue</p>
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-2">
             <Receipt className="w-5 h-5 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-700">Expenses</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Expenses</p>
           </div>
-          <p className="text-sm text-gray-600">Total Tracked</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Total Tracked</p>
           <p className="text-xl font-bold text-red-600">{formatCurrency(totalExpensesAmount)}</p>
-          <p className="text-xs text-gray-500 mt-1">{recurringExpenses.length} recurring expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{recurringExpenses.length} recurring expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Cashflow */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Recent Cashflow</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold dark:text-white mb-4">Recent Cashflow</h2>
           {recentCashflow.length === 0 ? (
-            <p className="text-gray-500">No cashflow entries yet</p>
+            <p className="text-gray-500 dark:text-gray-400">No cashflow entries yet</p>
           ) : (
             <div className="space-y-3">
               {recentCashflow.map((entry) => (
-                <div key={entry.id} className="flex justify-between items-center border-b pb-2">
+                <div key={entry.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2">
                   <div>
-                    <p className="font-medium">{entry.description}</p>
-                    <p className="text-sm text-gray-500">{formatDate(entry.date)}</p>
+                    <p className="font-medium dark:text-white">{entry.description}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(entry.date)}</p>
                   </div>
                   <p className={`font-semibold ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                     {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}
@@ -256,20 +256,20 @@ export default function Dashboard() {
         </div>
 
         {/* Upcoming Bills */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Upcoming Bills</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold dark:text-white mb-4">Upcoming Bills</h2>
           {upcomingBills.length === 0 ? (
-            <p className="text-gray-500">No upcoming bills</p>
+            <p className="text-gray-500 dark:text-gray-400">No upcoming bills</p>
           ) : (
             <div className="space-y-3">
               {upcomingBills.map((bill) => {
                 const dueDate = parseISO(bill.dueDate);
                 const isOverdue = !bill.paid && isPast(dueDate) && !isToday(dueDate);
                 return (
-                  <div key={bill.id} className="flex justify-between items-center border-b pb-2">
+                  <div key={bill.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2">
                     <div>
-                      <p className="font-medium">{bill.description}</p>
-                      <p className={`text-sm ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                      <p className="font-medium dark:text-white">{bill.description}</p>
+                      <p className={`text-sm ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>
                         Due: {formatDate(bill.dueDate)} {isOverdue && '(Overdue)'}
                       </p>
                     </div>
@@ -284,8 +284,8 @@ export default function Dashboard() {
 
       {/* Credit Cards Summary */}
       {creditCards.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Credit Card Plans</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold dark:text-white mb-4">Credit Card Plans</h2>
           <div className="space-y-3">
             {creditCards.map((card) => {
               const cardRemaining = card.plans.reduce((sum, plan) => {
@@ -295,16 +295,16 @@ export default function Dashboard() {
               const cardWeekly = card.plans.reduce((sum, plan) => sum + (plan.weeklyPayment || 0), 0);
               
               return (
-                <div key={card.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={card.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-semibold">{card.name}</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-semibold dark:text-white">{card.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {card.plans.length} plan{card.plans.length !== 1 ? 's' : ''} | Remaining: {formatCurrency(cardRemaining)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">Weekly Payment</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Weekly Payment</p>
                       <p className="text-lg font-bold text-orange-600">{formatCurrency(cardWeekly)}</p>
                     </div>
                   </div>
@@ -317,24 +317,24 @@ export default function Dashboard() {
 
       {/* Goals Summary */}
       {goals.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Goals Progress</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold dark:text-white mb-4">Goals Progress</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {goals.slice(0, 4).map((goal) => {
               const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
               return (
-                <div key={goal.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={goal.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold">{goal.name}</h3>
+                    <h3 className="font-semibold dark:text-white">{goal.name}</h3>
                     <p className="text-sm font-bold text-blue-600">{progress.toFixed(1)}%</p>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
                     <div
                       className="bg-gradient-to-r from-purple-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
                     {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                   </p>
                 </div>

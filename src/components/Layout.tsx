@@ -169,6 +169,13 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                   )}
                 </div>
               )}
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 px-3 py-2 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           </div>
         </div>
