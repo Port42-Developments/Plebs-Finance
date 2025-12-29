@@ -101,5 +101,44 @@
 
 ---
 
+## [1.1.0] - 2024-12-29
+
+### Added
+
+- **Transaction Category Tagging**
+  - Category field for cashflow entries and expenses
+  - Category autocomplete suggestions from existing budget categories
+  - Visual category badges with tag icons in cashflow table
+  - Edit functionality for existing cashflow transactions
+  - Category-based budget tracking (budgets with categories only track matching expenses)
+  - PUT endpoint for updating cashflow entries
+
+### Modified
+
+- **Cashflow Component**
+  - Added category column to cashflow table
+  - Enhanced add/edit modal with category input field
+  - Added edit button (pencil icon) for each transaction
+  - Improved form to support both adding and editing transactions
+  - Category suggestions from existing budgets via datalist
+
+- **Budgets Component**
+  - Updated spending calculation to filter by category when budget has a category
+  - Budgets without categories continue to track all expenses (backward compatible)
+
+- **Type Definitions**
+  - Added optional `category` field to `CashflowEntry` interface
+  - Added optional `category` field to `Expense` interface
+
+- **API**
+  - Added `updateCashflow` method to frontend API client
+  - Added PUT endpoint for cashflow updates in backend API
+
+### Removed
+
+- None
+
+---
+
 **Developed by [Port42 Developments](https://port42.nz)**
 

@@ -8,7 +8,7 @@
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=white)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Port42](https://img.shields.io/badge/Port42-Developments-3FA9F5?style=flat&labelColor=0F1216)](https://port42.dev)
+[![Port42](https://img.shields.io/badge/Port42-Developments-3FA9F5?style=flat&labelColor=0F1216)](https://port42.nz)
 
 *Take control of your finances with a simple, secure, and powerful personal finance manager*
 
@@ -20,14 +20,18 @@
 
 ## ✨ Features
 
-### 🔐 **Secure Authentication**
-- PIN-based login system (4-6 digits)
-- First-time user registration
+### 🔐 **Secure Authentication & Multi-User Support**
+- Username and PIN-based authentication (4-6 digit PIN)
+- Multi-user support with complete data isolation
+- User registration and login system
+- Legacy account migration support
 - Change PIN from profile settings
-- All data stored securely in Cloudflare KV
+- All data stored securely in Cloudflare KV with user-scoped keys
 
 ### 💵 **Cashflow Management**
 - **Manual Entry**: Add income and expenses with dates and descriptions
+- **Transaction Tagging**: Tag transactions with categories for budget tracking
+- **Edit Transactions**: Update existing cashflow entries including categories
 - **Bank Statement Upload**: Upload CSV/text files and automatically parse transactions
 - **Transaction History**: View all cashflow entries with filtering and sorting
 - **Summary Statistics**: Real-time totals for income, expenses, and net cashflow
@@ -53,6 +57,14 @@
 - **Due Date Tracking**: Never miss a payment with visual indicators
 - **Status Management**: Mark bills as paid/unpaid with status indicators
 
+### 💰 **Budget Planning & Tracking**
+- **Budget Creation**: Create budgets with weekly, monthly, or yearly periods
+- **Category-Based Tracking**: Tag transactions with categories and track spending against category-specific budgets
+- **Flexible Budgets**: Create budgets with or without categories (category-less budgets track all expenses)
+- **Spending Calculation**: Automatically calculates spent amount from cashflow and expenses
+- **Visual Progress**: Progress bars and status indicators showing budget utilization
+- **Period Management**: Set start and optional end dates for budgets
+
 ### 🎯 **Financial Goals**
 - **Savings Goals**: Set target amounts and track progress
 - **Account Linking**: Link goals to accounts for automatic balance tracking
@@ -74,7 +86,7 @@
 - **Personalization**: Set your name and preferences
 - **Currency Selection**: Choose from multiple currencies (default: NZD)
 - **Timezone Settings**: Set your timezone for accurate date/time display (default: Pacific/Auckland)
-- **Dark Mode**: Toggle between light and dark themes for a comfortable viewing experience
+- **Dark Mode**: Toggle between light and dark themes with preference persistence
 - **PIN Management**: Change your PIN anytime from the profile page
 
 ---
@@ -133,10 +145,12 @@
 ### First Time Setup
 
 1. Visit your deployed app
-2. Click "New user? Create a PIN"
-3. Enter a 4-6 digit PIN and confirm it
-4. Click "Create PIN"
+2. Click "New user? Register"
+3. Enter a username, 4-6 digit PIN, and your name (optional)
+4. Click "Register"
 5. You're in! Start managing your finances
+
+**Note**: If you have an existing legacy account (PIN-only), you can migrate it by logging in with your PIN and following the migration prompt.
 
 ---
 
@@ -147,6 +161,8 @@
 #### **Cashflow**
 - Click "Cashflow" in the navigation
 - Click "Add Entry" to manually add income or expenses
+- Tag transactions with categories for budget tracking (optional)
+- Click the edit icon to update existing transactions and add categories
 - Click "Upload Statement" to parse bank statements (CSV/text format)
 - View your net cashflow in the summary cards
 
@@ -178,6 +194,14 @@
 - Mark bills as paid using the checkmark button
 - View overdue and upcoming bills
 
+#### **Budgets**
+- Click "Budgets" in the navigation
+- Click "Add Budget" to create a new budget
+- Set budget amount, period (weekly/monthly/yearly), and optional category
+- Budgets with categories only track expenses tagged with that category
+- Budgets without categories track all expenses
+- View spending progress with visual indicators and remaining amounts
+
 #### **Goals**
 - Click "Goals" in the navigation
 - Click "Add Goal" to create a savings goal
@@ -189,6 +213,7 @@
 - Click "Profile" in the navigation
 - Update your name and profile picture
 - Change currency and timezone settings
+- Toggle dark mode on/off (preference is saved)
 - Click "Change PIN" to update your PIN code
 
 ---
@@ -223,6 +248,7 @@ Plebs-Finance/
 │   │   ├── CreditCards.tsx      # Credit card plans
 │   │   ├── Expenses.tsx         # Expenses tracking
 │   │   ├── Bills.tsx            # Bills management
+│   │   ├── Budgets.tsx          # Budget planning and tracking
 │   │   ├── Goals.tsx            # Financial goals
 │   │   └── Profile.tsx          # Profile settings
 │   ├── api.ts                   # API client functions
@@ -240,17 +266,20 @@ Plebs-Finance/
 
 ### Data Storage
 
-All data is stored in Cloudflare KV with the following structure:
+All data is stored in Cloudflare KV with user-scoped keys for complete data isolation:
 
-- `user:pin` - User PIN code
-- `user:profile` - User profile data (JSON)
-- `cashflow` - Cashflow entries array (JSON)
-- `credit-cards` - Credit cards array (JSON)
-- `accounts` - Accounts array (JSON)
-- `account-transactions` - Account transactions array (JSON)
-- `expenses` - Expenses array (JSON)
-- `bills` - Bills array (JSON)
-- `goals` - Goals array (JSON)
+- `user:{userId}:profile` - User profile data (JSON)
+- `user:{userId}:cashflow` - Cashflow entries array (JSON)
+- `user:{userId}:credit-cards` - Credit cards array (JSON)
+- `user:{userId}:accounts` - Accounts array (JSON)
+- `user:{userId}:account-transactions` - Account transactions array (JSON)
+- `user:{userId}:expenses` - Expenses array (JSON)
+- `user:{userId}:bills` - Bills array (JSON)
+- `user:{userId}:budgets` - Budgets array (JSON)
+- `user:{userId}:goals` - Goals array (JSON)
+- `users` - All registered users array (JSON)
+
+**Note**: Legacy single-user accounts use non-prefixed keys and can be migrated to the new multi-user structure.
 
 ---
 
@@ -297,8 +326,12 @@ wrangler pages dev dist --kv FINANCE_KV=your-namespace-id
 All API endpoints are handled by Cloudflare Pages Functions at `/api/*`:
 
 ### Authentication
-- `POST /api/auth/verify` - Verify PIN (creates PIN if first time)
+- `POST /api/auth/register` - Register new user (username, PIN, name)
+- `POST /api/auth/login` - Login with username and PIN
+- `POST /api/auth/verify` - Verify PIN (legacy support)
 - `POST /api/auth/change-pin` - Change PIN
+- `POST /api/auth/migrate-legacy` - Migrate legacy single-user account to multi-user
+- `GET /api/users` - Get all registered users
 
 ### Profile
 - `GET /api/user/profile` - Get user profile
@@ -306,7 +339,8 @@ All API endpoints are handled by Cloudflare Pages Functions at `/api/*`:
 
 ### Cashflow
 - `GET /api/cashflow` - Get all cashflow entries
-- `POST /api/cashflow` - Add cashflow entry
+- `POST /api/cashflow` - Add cashflow entry (supports category field)
+- `PUT /api/cashflow/:id` - Update cashflow entry
 - `DELETE /api/cashflow/:id` - Delete cashflow entry
 
 ### Accounts
@@ -334,6 +368,12 @@ All API endpoints are handled by Cloudflare Pages Functions at `/api/*`:
 - `GET /api/bills` - Get all bills
 - `POST /api/bills` - Add bill
 - `DELETE /api/bills/:id` - Delete bill
+
+### Budgets
+- `GET /api/budgets` - Get all budgets
+- `POST /api/budgets` - Add budget
+- `PUT /api/budgets/:id` - Update budget
+- `DELETE /api/budgets/:id` - Delete budget
 
 ### Goals
 - `GET /api/goals` - Get all goals
@@ -371,6 +411,15 @@ The app automatically calculates how much you need to pay per week to clear your
 - The app attempts to parse dates, amounts, and descriptions
 - Parsed transactions are automatically added to cashflow
 - **Note**: Parsing is basic and may require manual adjustment for different bank formats
+
+### Budget & Category Tracking
+
+- Create budgets with optional categories (e.g., "Groceries", "Entertainment")
+- Tag cashflow transactions with categories when adding or editing
+- Budgets with categories only track expenses matching that category
+- Budgets without categories track all expenses
+- Spending is automatically calculated from both cashflow entries and expenses
+- Visual progress bars show how much of your budget has been used
 
 ---
 
@@ -438,16 +487,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Potential future features:
 
-- [ ] Budget planning and tracking
-- [ ] Category-based expense tracking
+- [x] ~~Budget planning and tracking~~
+- [x] ~~Category-based expense tracking~~
+- [x] ~~Transaction tagging for budgets~~
+- [x] ~~Multi-user support~~
+- [x] ~~Dark mode~~
 - [ ] Financial reports and analytics (PDF/CSV export)
 - [ ] Mobile app (React Native)
 - [ ] Bank account integration (Open Banking API)
 - [ ] Investment tracking
 - [ ] Bill reminders and notifications
-- [x] ~~Multi-user support~~
 - [ ] Data backup and restore
-- [x] ~~Dark mode~~
 - [ ] Advanced bank statement parsing
 
 ---
@@ -471,7 +521,7 @@ For issues, questions, or contributions, please [open an issue](https://github.c
 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
   <a href="https://github.com/Port42-Developments/Plebs-Finance" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">⭐ Star this repo</a>
   <span style="color: #8A94A6;">•</span>
-  <a href="https://port42.dev" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">Port42 Developments</a>
+  <a href="https://port42.nz" style="color: #3FA9F5; text-decoration: none; font-size: 14px;">Port42 Developments</a>
 </div>
 
 <div style="color: #8A94A6; font-size: 12px; padding-top: 1rem; border-top: 1px solid #1a1f26;">

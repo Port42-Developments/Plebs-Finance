@@ -13,8 +13,6 @@ interface LayoutProps {
 export default function Layout({ children, onLogout, currentUser }: LayoutProps) {
   const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,27 +31,7 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
     };
   }, [showProfileMenu]);
 
-  const loadUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const allUsers = await api.getUsers();
-      setUsers(allUsers);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const handleSwitchUser = async (user: UserType) => {
-    localStorage.setItem('currentUserId', user.id);
-    window.location.reload(); // Reload to refresh all data
-  };
-
   const handleProfileMenuClick = () => {
-    if (!showProfileMenu) {
-      loadUsers();
-    }
     setShowProfileMenu(!showProfileMenu);
   };
 
@@ -126,32 +104,6 @@ export default function Layout({ children, onLogout, currentUser }: LayoutProps)
                         <User className="w-4 h-4" />
                         Profile
                       </Link>
-
-                      {/* Switch User Section */}
-                      <div className="max-h-48 overflow-y-auto">
-                        {loadingUsers ? (
-                          <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">Loading users...</div>
-                        ) : users.length > 1 ? (
-                          <>
-                            <div className="p-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase border-b border-gray-200 dark:border-gray-700">Switch User</div>
-                            {users.map((user) => (
-                              <button
-                                key={user.id}
-                                onClick={() => {
-                                  handleSwitchUser(user);
-                                  setShowProfileMenu(false);
-                                }}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                                  user.id === currentUser.id ? 'bg-purple-50 dark:bg-purple-900 text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                <div className="font-medium">{user.name || user.username}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</div>
-                              </button>
-                            ))}
-                          </>
-                        ) : null}
-                      </div>
 
                       {/* Logout */}
                       <div className="p-2 border-t border-gray-200 dark:border-gray-700">
