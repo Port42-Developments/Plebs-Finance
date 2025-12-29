@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Upload, X } from 'lucide-react';
+import { Plus, Upload, X, Tag, Edit2 } from 'lucide-react';
 import { api } from '../api';
 import { CashflowEntry } from '../types';
 import { parseISO } from 'date-fns';
@@ -7,9 +7,11 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 export default function Cashflow() {
   const [cashflow, setCashflow] = useState<CashflowEntry[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({ currency: 'NZD', timezone: 'Pacific/Auckland' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<CashflowEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -17,6 +19,7 @@ export default function Cashflow() {
     description: '',
     amount: '',
     type: 'income' as 'income' | 'expense',
+    category: '',
   });
 
   useEffect(() => {
@@ -25,8 +28,9 @@ export default function Cashflow() {
 
   const loadData = async () => {
     try {
-      const [cf, p] = await Promise.all([api.getCashflow(), api.getProfile()]);
+      const [cf, b, p] = await Promise.all([api.getCashflow(), api.getBudgets(), api.getProfile()]);
       setCashflow(cf);
+      setBudgets(b);
       setProfile(p);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -53,21 +57,55 @@ export default function Cashflow() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.addCashflow({
+      const entryData = {
         ...formData,
         amount: parseFloat(formData.amount),
-      });
+        category: formData.category || undefined,
+      };
+      
+      if (editingEntry) {
+        await api.updateCashflow(editingEntry.id, entryData);
+        setEditingEntry(null);
+      } else {
+        await api.addCashflow(entryData);
+      }
+      
       setShowAddModal(false);
       setFormData({
         date: new Date().toISOString().split('T')[0],
         description: '',
         amount: '',
         type: 'income',
+        category: '',
       });
       loadData();
     } catch (error) {
-      alert('Failed to add cashflow entry');
+      alert('Failed to save cashflow entry');
     }
+  };
+
+  const handleEdit = (entry: CashflowEntry) => {
+    setEditingEntry(entry);
+    setFormData({
+      date: entry.date.split('T')[0],
+      description: entry.description,
+      amount: entry.amount.toString(),
+      type: entry.type,
+      category: entry.category || '',
+    });
+    setShowAddModal(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setShowAddModal(false);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      amount: '',
+      type: 'income',
+      category: '',
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -166,6 +204,7 @@ export default function Cashflow() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
@@ -174,7 +213,7 @@ export default function Cashflow() {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {sortedCashflow.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     No cashflow entries yet
                   </td>
                 </tr>
@@ -184,11 +223,21 @@ export default function Cashflow() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{formatDate(entry.date)}</td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{entry.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {entry.category ? (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 flex items-center gap-1">
+                          <Tag className="w-3 h-3" />
+                          {entry.category}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${
                           entry.type === 'income'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         }`}
                       >
                         {entry.type}
@@ -200,12 +249,22 @@ export default function Cashflow() {
                       {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                          title="Delete"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -215,11 +274,13 @@ export default function Cashflow() {
         </div>
       </div>
 
-      {/* Add Modal */}
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold dark:text-white mb-4">Add Cashflow Entry</h2>
+            <h2 className="text-2xl font-bold dark:text-white mb-4">
+              {editingEntry ? 'Edit Cashflow Entry' : 'Add Cashflow Entry'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
@@ -240,6 +301,31 @@ export default function Cashflow() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Category <span className="text-xs text-gray-500">(for budget tracking)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., Groceries, Entertainment, Transport"
+                  list="category-suggestions"
+                />
+                <datalist id="category-suggestions">
+                  {budgets
+                    .filter((b) => b.category)
+                    .map((b) => b.category)
+                    .filter((cat, index, self) => self.indexOf(cat) === index)
+                    .map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                </datalist>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Tag this transaction to match it with a budget category
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
@@ -266,7 +352,7 @@ export default function Cashflow() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={handleCancelEdit}
                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancel
@@ -275,7 +361,7 @@ export default function Cashflow() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
                 >
-                  Add
+                  {editingEntry ? 'Save' : 'Add'}
                 </button>
               </div>
             </form>

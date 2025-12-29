@@ -393,6 +393,21 @@ export async function onRequest(context: any) {
       return new Response(JSON.stringify(entry), { headers });
     }
 
+    if (path.startsWith('cashflow/') && method === 'PUT') {
+      const id = path.split('/')[1];
+      const body = await request.json();
+      const { userId, ...updatedEntry } = body;
+      const key = userId ? getUserKey(userId, 'cashflow') : 'cashflow';
+      const cashflow = (await kv.get(key, 'json')) || [];
+      const index = cashflow.findIndex((e: any) => e.id === id);
+      if (index !== -1) {
+        cashflow[index] = { ...cashflow[index], ...updatedEntry };
+        await kv.put(key, JSON.stringify(cashflow));
+        return new Response(JSON.stringify(cashflow[index]), { headers });
+      }
+      return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
+    }
+
     if (path.startsWith('cashflow/') && method === 'DELETE') {
       const id = path.split('/')[1];
       const { userId } = await request.json().catch(() => ({}));

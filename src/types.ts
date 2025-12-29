@@ -22,6 +22,7 @@ export interface CashflowEntry {
   description: string;
   amount: number;
   type: 'income' | 'expense';
+  category?: string; // Optional category for budget tracking
   createdAt: string;
 }
 
@@ -54,6 +55,7 @@ export interface Expense {
   description: string;
   amount: number;
   date: string;
+  category?: string; // Optional category for budget tracking
   recurring?: {
     frequency: 'weekly' | 'monthly' | 'yearly';
     endDate?: string;

@@ -69,11 +69,20 @@ export default function Budgets() {
     }
 
     // Calculate spent from cashflow expenses
+    // If budget has a category, only count expenses with matching category
+    // If budget has no category, count all expenses
     const cashflowSpent = cashflow
       .filter((entry) => {
         if (entry.type !== 'expense') return false;
         const entryDate = parseISO(entry.date);
-        return isWithinInterval(entryDate, { start: periodStart, end: periodEnd });
+        if (!isWithinInterval(entryDate, { start: periodStart, end: periodEnd })) return false;
+        
+        // If budget has a category, only match expenses with that category
+        if (budget.category) {
+          return entry.category === budget.category;
+        }
+        // If budget has no category, count all expenses
+        return true;
       })
       .reduce((sum, entry) => sum + entry.amount, 0);
 
@@ -81,7 +90,14 @@ export default function Budgets() {
     const expensesSpent = expenses
       .filter((expense) => {
         const expenseDate = parseISO(expense.date);
-        return isWithinInterval(expenseDate, { start: periodStart, end: periodEnd });
+        if (!isWithinInterval(expenseDate, { start: periodStart, end: periodEnd })) return false;
+        
+        // If budget has a category, only match expenses with that category
+        if (budget.category) {
+          return expense.category === budget.category;
+        }
+        // If budget has no category, count all expenses
+        return true;
       })
       .reduce((sum, exp) => sum + exp.amount, 0);
 

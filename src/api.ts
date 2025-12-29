@@ -60,6 +60,10 @@ export const api = {
     const userId = getUserId();
     return fetchAPI('cashflow', { method: 'POST', body: JSON.stringify({ ...entry, userId }) });
   },
+  updateCashflow: (id: string, entry: any) => {
+    const userId = getUserId();
+    return fetchAPI(`cashflow/${id}`, { method: 'PUT', body: JSON.stringify({ ...entry, userId }) });
+  },
   deleteCashflow: (id: string) => {
     const userId = getUserId();
     return fetchAPI(`cashflow/${id}`, { method: 'DELETE', body: JSON.stringify({ userId }) });
