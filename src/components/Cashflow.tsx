@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Upload, X, Tag, Edit2 } from 'lucide-react';
+import { Plus, Upload, X, Tag, Edit2, Check, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { CashflowEntry } from '../types';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+
+interface ParsedTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  type?: 'income' | 'expense';
+  category?: string;
+}
 
 export default function Cashflow() {
   const [cashflow, setCashflow] = useState<CashflowEntry[]>([]);
@@ -11,8 +19,12 @@ export default function Cashflow() {
   const [profile, setProfile] = useState<any>({ currency: 'NZD', timezone: 'Pacific/Auckland' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
+  const [parsingFormat, setParsingFormat] = useState<string>('');
   const [editingEntry, setEditingEntry] = useState<CashflowEntry | null>(null);
   const [loading, setLoading] = useState(true);
+  const [parsing, setParsing] = useState(false);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -122,26 +134,63 @@ export default function Cashflow() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setParsing(true);
     try {
       const result = await api.parseBankStatement(file);
       if (result.transactions && result.transactions.length > 0) {
-        // Add parsed transactions
-        for (const transaction of result.transactions) {
-          await api.addCashflow({
-            date: transaction.date,
-            description: transaction.description || 'Bank transaction',
-            amount: Math.abs(transaction.amount),
-            type: transaction.amount >= 0 ? 'income' : 'expense',
-          });
-        }
+        // Prepare transactions for preview
+        const previewTransactions: ParsedTransaction[] = result.transactions.map((t: any) => ({
+          date: t.date,
+          description: t.description || 'Bank transaction',
+          amount: Math.abs(t.amount),
+          type: t.amount >= 0 ? 'income' : 'expense',
+          category: '',
+        }));
+        
+        setParsedTransactions(previewTransactions);
+        setParsingFormat(result.format || 'CSV/Text');
         setShowUploadModal(false);
-        loadData();
-        alert(`Added ${result.transactions.length} transactions from statement`);
+        setShowPreviewModal(true);
       } else {
-        alert('No transactions found in statement');
+        alert('No transactions found in statement. Please check the file format.');
       }
+    } catch (error: any) {
+      alert(`Failed to parse bank statement: ${error.message || 'Unknown error'}`);
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleUpdatePreviewTransaction = (index: number, field: keyof ParsedTransaction, value: any) => {
+    const updated = [...parsedTransactions];
+    updated[index] = { ...updated[index], [field]: value };
+    setParsedTransactions(updated);
+  };
+
+  const handleRemovePreviewTransaction = (index: number) => {
+    setParsedTransactions(parsedTransactions.filter((_, i) => i !== index));
+  };
+
+  const handleImportTransactions = async () => {
+    try {
+      let imported = 0;
+      for (const transaction of parsedTransactions) {
+        await api.addCashflow({
+          date: transaction.date,
+          description: transaction.description,
+          amount: transaction.amount,
+          type: transaction.type || (transaction.amount >= 0 ? 'income' : 'expense'),
+          category: transaction.category || undefined,
+        });
+        imported++;
+      }
+      
+      setShowPreviewModal(false);
+      setParsedTransactions([]);
+      loadData();
+      alert(`Successfully imported ${imported} transaction${imported !== 1 ? 's' : ''}`);
     } catch (error) {
-      alert('Failed to parse bank statement');
+      alert('Failed to import some transactions. Please try again.');
     }
   };
 
@@ -375,20 +424,177 @@ export default function Cashflow() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold dark:text-white mb-4">Upload Bank Statement</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Upload a CSV or text file with your bank statement. The app will attempt to parse transactions.
+              Upload a bank statement file. Supported formats:
+            </p>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 mb-4 list-disc list-inside space-y-1">
+              <li>CSV files (with or without headers)</li>
+              <li>TSV files (tab-separated)</li>
+              <li>OFX/QFX files (Quicken/QuickBooks format)</li>
+              <li>Plain text files</li>
+            </ul>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
+              The parser will automatically detect the format and extract transactions. You'll be able to review and edit them before importing.
             </p>
             <input
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.ofx,.qfx"
               onChange={handleFileUpload}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg mb-4"
+              disabled={parsing}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg mb-4 disabled:opacity-50"
             />
+            {parsing && (
+              <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">Parsing file...</p>
+            )}
             <button
               onClick={() => setShowUploadModal(false)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+              disabled={parsing}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
             >
-              Close
+              Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl my-8">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-2xl font-bold dark:text-white">Review Parsed Transactions</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Found {parsedTransactions.length} transaction{parsedTransactions.length !== 1 ? 's' : ''} 
+                  {parsingFormat && ` (${parsingFormat} format)`}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPreviewModal(false);
+                  setParsedTransactions([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                <strong>Review and edit transactions before importing:</strong> You can modify dates, descriptions, amounts, types, and add categories. 
+                Remove any transactions you don't want to import.
+              </p>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto mb-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Description</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Category</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {parsedTransactions.map((transaction, index) => (
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-2">
+                        <input
+                          type="date"
+                          value={transaction.date}
+                          onChange={(e) => handleUpdatePreviewTransaction(index, 'date', e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-xs"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={transaction.description}
+                          onChange={(e) => handleUpdatePreviewTransaction(index, 'description', e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-xs"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <select
+                          value={transaction.type}
+                          onChange={(e) => handleUpdatePreviewTransaction(index, 'type', e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-xs"
+                        >
+                          <option value="income">Income</option>
+                          <option value="expense">Expense</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={transaction.amount}
+                          onChange={(e) => handleUpdatePreviewTransaction(index, 'amount', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-xs"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={transaction.category || ''}
+                          onChange={(e) => handleUpdatePreviewTransaction(index, 'category', e.target.value)}
+                          placeholder="Optional"
+                          list={`category-preview-${index}`}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-xs"
+                        />
+                        <datalist id={`category-preview-${index}`}>
+                          {budgets
+                            .filter((b) => b.category)
+                            .map((b) => b.category)
+                            .filter((cat, idx, self) => self.indexOf(cat) === idx)
+                            .map((cat) => (
+                              <option key={cat} value={cat} />
+                            ))}
+                        </datalist>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          onClick={() => handleRemovePreviewTransaction(index)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {parsedTransactions.length === 0 && (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                No transactions to import. All transactions have been removed.
+              </p>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowPreviewModal(false);
+                  setParsedTransactions([]);
+                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportTransactions}
+                disabled={parsedTransactions.length === 0}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                Import {parsedTransactions.length} Transaction{parsedTransactions.length !== 1 ? 's' : ''}
+              </button>
+            </div>
           </div>
         </div>
       )}

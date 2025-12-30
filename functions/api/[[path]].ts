@@ -857,7 +857,7 @@ export async function onRequest(context: any) {
     }
 
 
-    // Bank statement parsing endpoint
+    // Advanced bank statement parsing endpoint
     if (path === 'bank-statement/parse' && method === 'POST') {
       const formData = await request.formData();
       const file = formData.get('file') as File;
@@ -869,36 +869,334 @@ export async function onRequest(context: any) {
         });
       }
 
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      // Simple CSV/TSV parser - looks for date, description, amount patterns
-      const transactions: any[] = [];
-      const datePattern = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/;
-      const amountPattern = /[\$]?([\d,]+\.?\d*)/;
-      
-      for (const line of lines) {
-        if (datePattern.test(line)) {
-          const dateMatch = line.match(datePattern);
-          const amountMatch = line.match(amountPattern);
+      const fileName = file.name.toLowerCase();
+      const fileContent = await file.text();
+
+      // Helper function to parse various date formats
+      const parseDate = (dateStr: string): string | null => {
+        if (!dateStr) return null;
+        
+        // Remove common separators and normalize
+        const cleaned = dateStr.trim().replace(/[,\s]+/g, ' ');
+        
+        // Try ISO format (YYYY-MM-DD)
+        const isoMatch = cleaned.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+        if (isoMatch) {
+          const [, year, month, day] = isoMatch;
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        
+        // Try DD/MM/YYYY or MM/DD/YYYY
+        const slashMatch = cleaned.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})$/);
+        if (slashMatch) {
+          let [, part1, part2, year] = slashMatch;
+          // If year is 2 digits, assume 20XX
+          if (year.length === 2) year = '20' + year;
           
-          if (dateMatch && amountMatch) {
-            const dateStr = dateMatch[0];
-            const amountStr = amountMatch[1].replace(/,/g, '');
-            const amount = parseFloat(amountStr);
+          // Try DD/MM/YYYY first (more common internationally)
+          const day = parseInt(part1);
+          const month = parseInt(part2);
+          if (day > 0 && day <= 31 && month > 0 && month <= 12) {
+            // If day > 12, it must be DD/MM
+            if (day > 12) {
+              return `${year}-${part2.padStart(2, '0')}-${part1.padStart(2, '0')}`;
+            }
+            // Otherwise try MM/DD (US format)
+            return `${year}-${part1.padStart(2, '0')}-${part2.padStart(2, '0')}`;
+          }
+        }
+        
+        // Try text dates (e.g., "Jan 15, 2024", "15 Jan 2024")
+        const textDatePatterns = [
+          /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i,
+          /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})/i,
+        ];
+        
+        const months: { [key: string]: string } = {
+          jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+          jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+        };
+        
+        for (const pattern of textDatePatterns) {
+          const match = cleaned.match(pattern);
+          if (match) {
+            const monthName = match[1] || match[2];
+            const monthNum = months[monthName.toLowerCase().substring(0, 3)];
+            if (monthNum) {
+              const day = (match[2] || match[1]).padStart(2, '0');
+              const year = match[3];
+              return `${year}-${monthNum}-${day}`;
+            }
+          }
+        }
+        
+        return null;
+      };
+
+      // Helper function to parse amounts
+      const parseAmount = (amountStr: string): number | null => {
+        if (!amountStr) return null;
+        
+        // Remove currency symbols, commas, and whitespace
+        const cleaned = amountStr.replace(/[$€£¥,\s]/g, '');
+        
+        // Handle parentheses as negative (accounting format)
+        const isNegative = cleaned.includes('(') || cleaned.startsWith('-');
+        const numericStr = cleaned.replace(/[()]/g, '');
+        
+        const amount = parseFloat(numericStr);
+        if (isNaN(amount)) return null;
+        
+        return isNegative ? -Math.abs(amount) : amount;
+      };
+
+      // Helper to detect CSV delimiter
+      const detectDelimiter = (line: string): string => {
+        const delimiters = [',', '\t', ';', '|'];
+        let maxCount = 0;
+        let detectedDelimiter = ',';
+        
+        for (const delim of delimiters) {
+          const count = (line.match(new RegExp(`\\${delim}`, 'g')) || []).length;
+          if (count > maxCount) {
+            maxCount = count;
+            detectedDelimiter = delim;
+          }
+        }
+        
+        return detectedDelimiter;
+      };
+
+      // Helper to find column indices
+      const findColumns = (headers: string[]): { date: number; description: number; amount: number; type?: number } => {
+        const lowerHeaders = headers.map(h => h.toLowerCase().trim());
+        
+        const dateIndices = ['date', 'transaction date', 'posted date', 'value date', 'trans date'];
+        const descIndices = ['description', 'memo', 'details', 'narration', 'payee', 'merchant', 'transaction', 'particulars'];
+        const amountIndices = ['amount', 'value', 'balance', 'transaction amount', 'debit', 'credit'];
+        const typeIndices = ['type', 'transaction type', 'debit/credit', 'dr/cr'];
+        
+        const findIndex = (keywords: string[]) => {
+          for (const keyword of keywords) {
+            const idx = lowerHeaders.findIndex(h => h.includes(keyword));
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+        
+        return {
+          date: findIndex(dateIndices),
+          description: findIndex(descIndices),
+          amount: findIndex(amountIndices),
+          type: findIndex(typeIndices),
+        };
+      };
+
+      let transactions: any[] = [];
+
+      // Detect file format and parse accordingly
+      if (fileName.endsWith('.ofx') || fileName.endsWith('.qfx')) {
+        // OFX/QFX format parsing
+        const stmtTrnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+        const matches = fileContent.matchAll(stmtTrnRegex);
+        
+        for (const match of matches) {
+          const trnContent = match[1];
+          
+          const getTag = (tag: string): string | null => {
+            const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i');
+            const match = trnContent.match(regex);
+            return match ? match[1].trim() : null;
+          };
+          
+          const dateStr = getTag('DTPOSTED') || getTag('DTUSER');
+          const amountStr = getTag('TRNAMT');
+          const memo = getTag('MEMO') || getTag('NAME');
+          
+          if (dateStr && amountStr) {
+            // OFX dates are in format: YYYYMMDDHHMMSS
+            const ofxDate = dateStr.substring(0, 8);
+            const parsedDate = parseDate(
+              `${ofxDate.substring(0, 4)}-${ofxDate.substring(4, 6)}-${ofxDate.substring(6, 8)}`
+            );
             
-            if (!isNaN(amount)) {
+            const amount = parseAmount(amountStr);
+            
+            if (parsedDate && amount !== null) {
               transactions.push({
-                date: dateStr,
-                description: line.replace(datePattern, '').replace(amountPattern, '').trim(),
+                date: parsedDate,
+                description: memo || 'Bank transaction',
                 amount: amount,
               });
             }
           }
         }
+      } else {
+        // CSV/TSV/Text format
+        const lines = fileContent.split(/\r?\n/).filter(line => line.trim());
+        if (lines.length === 0) {
+          return new Response(JSON.stringify({ error: 'File is empty' }), {
+            status: 400,
+            headers,
+          });
+        }
+        
+        // Detect if first line is headers
+        const firstLine = lines[0];
+        const delimiter = detectDelimiter(firstLine);
+        const firstLineParts = firstLine.split(delimiter).map(p => p.trim());
+        
+        // Check if first line looks like headers (contains common header words)
+        const headerKeywords = ['date', 'description', 'amount', 'memo', 'transaction', 'balance'];
+        const hasHeaders = firstLineParts.some(part => 
+          headerKeywords.some(keyword => part.toLowerCase().includes(keyword))
+        );
+        
+        let startIndex = 0;
+        let columns: { date: number; description: number; amount: number; type?: number } = {
+          date: -1,
+          description: -1,
+          amount: -1,
+        };
+        
+        if (hasHeaders && firstLineParts.length > 1) {
+          // CSV with headers
+          columns = findColumns(firstLineParts);
+          startIndex = 1;
+        } else {
+          // Plain text or CSV without headers - use pattern matching
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const parts = line.split(delimiter).map(p => p.trim());
+            
+            // Try to find date and amount in the line
+            let dateFound: string | null = null;
+            let amountFound: number | null = null;
+            let description = '';
+            
+            // Check each part for date
+            for (const part of parts) {
+              const parsedDate = parseDate(part);
+              if (parsedDate && !dateFound) {
+                dateFound = parsedDate;
+                continue;
+              }
+              
+              const parsedAmount = parseAmount(part);
+              if (parsedAmount !== null && amountFound === null) {
+                amountFound = parsedAmount;
+                continue;
+              }
+            }
+            
+            // If not found in parts, try pattern matching on whole line
+            if (!dateFound || amountFound === null) {
+              const datePatterns = [
+                /\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/,
+                /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/,
+                /\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/i,
+              ];
+              
+              for (const pattern of datePatterns) {
+                const match = line.match(pattern);
+                if (match) {
+                  dateFound = parseDate(match[0]);
+                  if (dateFound) break;
+                }
+              }
+              
+              const amountPattern = /[\$€£¥]?\s*\(?([\d,]+\.?\d*)\)?/g;
+              const amountMatches = [...line.matchAll(amountPattern)];
+              if (amountMatches.length > 0) {
+                // Take the last amount match (usually the transaction amount)
+                const lastMatch = amountMatches[amountMatches.length - 1];
+                amountFound = parseAmount(lastMatch[0]);
+              }
+            }
+            
+            if (dateFound && amountFound !== null) {
+              // Extract description by removing date and amount
+              description = line
+                .replace(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/g, '')
+                .replace(/\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/g, '')
+                .replace(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/gi, '')
+                .replace(/[\$€£¥]?\s*\(?([\d,]+\.?\d*)\)?/g, '')
+                .trim();
+              
+              transactions.push({
+                date: dateFound,
+                description: description || 'Bank transaction',
+                amount: amountFound,
+              });
+            }
+          }
+        }
+        
+        // If we have column mappings, parse using them
+        if (columns.date !== -1 || columns.amount !== -1) {
+          transactions = [];
+          for (let i = startIndex; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.trim()) continue;
+            
+            const parts = line.split(delimiter).map(p => p.trim().replace(/^["']|["']$/g, ''));
+            
+            let dateStr: string | null = null;
+            let amountStr: string | null = null;
+            let description = '';
+            
+            if (columns.date !== -1 && parts[columns.date]) {
+              dateStr = parseDate(parts[columns.date]);
+            }
+            
+            if (columns.amount !== -1 && parts[columns.amount]) {
+              amountStr = parts[columns.amount];
+            }
+            
+            if (columns.description !== -1 && parts[columns.description]) {
+              description = parts[columns.description];
+            } else {
+              // Build description from non-date, non-amount columns
+              description = parts
+                .map((part, idx) => {
+                  if (idx === columns.date || idx === columns.amount) return '';
+                  return part;
+                })
+                .filter(p => p)
+                .join(' ')
+                .trim();
+            }
+            
+            if (dateStr && amountStr) {
+              const amount = parseAmount(amountStr);
+              if (amount !== null) {
+                transactions.push({
+                  date: dateStr,
+                  description: description || 'Bank transaction',
+                  amount: amount,
+                });
+              }
+            }
+          }
+        }
       }
       
-      return new Response(JSON.stringify({ transactions }), { headers });
+      // Remove duplicates and sort by date
+      const uniqueTransactions = transactions.filter((t, idx, self) =>
+        idx === self.findIndex(tr => 
+          tr.date === t.date && 
+          Math.abs(tr.amount - t.amount) < 0.01 &&
+          tr.description === t.description
+        )
+      );
+      
+      uniqueTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      return new Response(JSON.stringify({ 
+        transactions: uniqueTransactions,
+        count: uniqueTransactions.length,
+        format: fileName.endsWith('.ofx') || fileName.endsWith('.qfx') ? 'OFX/QFX' : 'CSV/Text'
+      }), { headers });
     }
 
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
