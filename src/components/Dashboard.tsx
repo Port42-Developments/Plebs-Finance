@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { CreditCard as CreditCardIcon, Target, TrendingUp, TrendingDown, Wallet, Receipt, FileText, Calendar } from 'lucide-react';
 import { api } from '../api';
 import { CashflowEntry, CreditCard, Bill, Goal, Account, Expense } from '../types';
-import { parseISO, isPast, isToday, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, subWeeks, addWeeks } from 'date-fns';
+import { parseISO, isPast, isToday, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, addWeeks } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 type TimePeriod = 'weekly' | 'fortnightly' | 'monthly' | 'yearly';
