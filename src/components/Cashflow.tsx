@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Plus, Upload, X, Tag, Edit2, Check, Trash2, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Upload, X, Tag, Edit2, Check, Trash2, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../api';
 import { CashflowEntry, Account } from '../types';
-import { parseISO } from 'date-fns';
+import { parseISO, startOfMonth, endOfMonth, format, isWithinInterval, getYear, getMonth } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 interface ParsedTransaction {
@@ -32,6 +32,7 @@ export default function Cashflow() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all'); // 'all' or account ID
   const [importAccountId, setImportAccountId] = useState<string>(''); // Account for import
   const [updateAccountBalance, setUpdateAccountBalance] = useState(false); // Whether to update account balance
+  const [currentMonthYear, setCurrentMonthYear] = useState<{ month: number; year: number } | null>(null); // Current month/year being viewed
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -310,7 +311,54 @@ export default function Cashflow() {
     ? cashflow 
     : cashflow.filter(entry => entry.accountId === selectedAccountId);
   
-  const sortedCashflow = [...filteredCashflow].sort(
+  // Get all available months/years from cashflow data
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>();
+    filteredCashflow.forEach(entry => {
+      try {
+        const date = parseISO(entry.date);
+        const monthKey = `${getYear(date)}-${getMonth(date)}`;
+        monthSet.add(monthKey);
+      } catch (e) {
+        // Skip invalid dates
+      }
+    });
+    return Array.from(monthSet)
+      .map(key => {
+        const [year, month] = key.split('-').map(Number);
+        return { year, month };
+      })
+      .sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.month - a.month;
+      });
+  }, [filteredCashflow]);
+  
+  // Initialize current month/year to the most recent month with data
+  useEffect(() => {
+    if (availableMonths.length > 0 && currentMonthYear === null) {
+      setCurrentMonthYear(availableMonths[0]);
+    }
+  }, [availableMonths, currentMonthYear]);
+  
+  // Filter cashflow by selected month/year
+  const monthFilteredCashflow = useMemo(() => {
+    if (!currentMonthYear) return filteredCashflow;
+    
+    const monthStart = startOfMonth(new Date(currentMonthYear.year, currentMonthYear.month));
+    const monthEnd = endOfMonth(new Date(currentMonthYear.year, currentMonthYear.month));
+    
+    return filteredCashflow.filter(entry => {
+      try {
+        const entryDate = parseISO(entry.date);
+        return isWithinInterval(entryDate, { start: monthStart, end: monthEnd });
+      } catch (e) {
+        return false;
+      }
+    });
+  }, [filteredCashflow, currentMonthYear]);
+  
+  const sortedCashflow = [...monthFilteredCashflow].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   
@@ -320,9 +368,32 @@ export default function Cashflow() {
     const account = accounts.find(a => a.id === accountId);
     return account?.name || null;
   };
-
-  const totalIncome = filteredCashflow.filter((c) => c.type === 'income').reduce((sum, c) => sum + c.amount, 0);
-  const totalExpenses = filteredCashflow.filter((c) => c.type === 'expense').reduce((sum, c) => sum + c.amount, 0);
+  
+  // Navigation functions
+  // Previous = go to older month (higher index in sorted array)
+  const goToPreviousMonth = () => {
+    if (!currentMonthYear) return;
+    const currentIndex = availableMonths.findIndex(
+      m => m.year === currentMonthYear.year && m.month === currentMonthYear.month
+    );
+    if (currentIndex < availableMonths.length - 1) {
+      setCurrentMonthYear(availableMonths[currentIndex + 1]);
+    }
+  };
+  
+  // Next = go to newer month (lower index in sorted array)
+  const goToNextMonth = () => {
+    if (!currentMonthYear) return;
+    const currentIndex = availableMonths.findIndex(
+      m => m.year === currentMonthYear.year && m.month === currentMonthYear.month
+    );
+    if (currentIndex > 0) {
+      setCurrentMonthYear(availableMonths[currentIndex - 1]);
+    }
+  };
+  
+  const totalIncome = monthFilteredCashflow.filter((c) => c.type === 'income').reduce((sum, c) => sum + c.amount, 0);
+  const totalExpenses = monthFilteredCashflow.filter((c) => c.type === 'expense').reduce((sum, c) => sum + c.amount, 0);
 
   if (loading) {
     return <div className="text-center py-12 dark:text-white">Loading...</div>;
@@ -372,18 +443,58 @@ export default function Cashflow() {
         </div>
       )}
 
+      {/* Month Navigation */}
+      {availableMonths.length > 0 && currentMonthYear && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={goToPreviousMonth}
+              disabled={availableMonths.findIndex(m => m.year === currentMonthYear.year && m.month === currentMonthYear.month) >= availableMonths.length - 1}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-gray-700 dark:text-gray-300"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span className="hidden sm:inline">Previous</span>
+            </button>
+            
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {format(new Date(currentMonthYear.year, currentMonthYear.month), 'MMMM yyyy')}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {availableMonths.length} month{availableMonths.length !== 1 ? 's' : ''} with data
+              </p>
+            </div>
+            
+            <button
+              onClick={goToNextMonth}
+              disabled={availableMonths.findIndex(m => m.year === currentMonthYear.year && m.month === currentMonthYear.month) === 0}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-gray-700 dark:text-gray-300"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Income</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {currentMonthYear ? `Income (${format(new Date(currentMonthYear.year, currentMonthYear.month), 'MMM yyyy')})` : 'Total Income'}
+          </p>
           <p className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Expenses</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {currentMonthYear ? `Expenses (${format(new Date(currentMonthYear.year, currentMonthYear.month), 'MMM yyyy')})` : 'Total Expenses'}
+          </p>
           <p className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Net Cashflow</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {currentMonthYear ? `Net (${format(new Date(currentMonthYear.year, currentMonthYear.month), 'MMM yyyy')})` : 'Net Cashflow'}
+          </p>
           <p className={`text-2xl font-bold ${totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(totalIncome - totalExpenses)}
           </p>
@@ -409,7 +520,9 @@ export default function Cashflow() {
               {sortedCashflow.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                    No cashflow entries yet
+                    {currentMonthYear 
+                      ? `No cashflow entries for ${format(new Date(currentMonthYear.year, currentMonthYear.month), 'MMMM yyyy')}`
+                      : 'No cashflow entries yet'}
                   </td>
                 </tr>
               ) : (
