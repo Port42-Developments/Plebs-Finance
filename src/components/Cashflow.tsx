@@ -25,6 +25,8 @@ export default function Cashflow() {
   const [editingEntry, setEditingEntry] = useState<CashflowEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [parsing, setParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -172,25 +174,96 @@ export default function Cashflow() {
   };
 
   const handleImportTransactions = async () => {
+    console.log('[Cashflow] handleImportTransactions called with', parsedTransactions.length, 'transactions');
+    
+    if (parsedTransactions.length === 0) {
+      console.warn('[Cashflow] No transactions to import');
+      alert('No transactions to import');
+      return;
+    }
+    
+    setImporting(true);
+    setImportProgress({ current: 0, total: parsedTransactions.length });
+    
     try {
       let imported = 0;
-      for (const transaction of parsedTransactions) {
-        await api.addCashflow({
-          date: transaction.date,
-          description: transaction.description,
-          amount: transaction.amount,
-          type: transaction.type || (transaction.amount >= 0 ? 'income' : 'expense'),
-          category: transaction.category || undefined,
-        });
-        imported++;
+      let failed = 0;
+      const errors: string[] = [];
+      
+      for (let i = 0; i < parsedTransactions.length; i++) {
+        const transaction = parsedTransactions[i];
+        console.log(`[Cashflow] Importing transaction ${i + 1}/${parsedTransactions.length}:`, transaction);
+        
+        // Update progress
+        setImportProgress({ current: i + 1, total: parsedTransactions.length });
+        
+        try {
+          // Validate transaction data
+          if (!transaction.date) {
+            throw new Error('Missing date');
+          }
+          if (!transaction.description) {
+            throw new Error('Missing description');
+          }
+          if (transaction.amount === undefined || transaction.amount === null || isNaN(transaction.amount)) {
+            throw new Error('Invalid amount');
+          }
+          
+          // Ensure date is in ISO format (YYYY-MM-DD)
+          let formattedDate = transaction.date;
+          if (formattedDate.includes('T')) {
+            formattedDate = formattedDate.split('T')[0];
+          }
+          // Validate date format
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (!dateRegex.test(formattedDate)) {
+            console.warn(`[Cashflow] Invalid date format: ${formattedDate}, attempting to fix...`);
+            // Try to parse and reformat
+            const parsedDate = new Date(formattedDate);
+            if (!isNaN(parsedDate.getTime())) {
+              formattedDate = parsedDate.toISOString().split('T')[0];
+            } else {
+              throw new Error(`Invalid date format: ${formattedDate}`);
+            }
+          }
+          
+          const entryData = {
+            date: formattedDate,
+            description: transaction.description.trim() || 'Bank transaction',
+            amount: Math.abs(transaction.amount), // Ensure positive amount
+            type: transaction.type || (transaction.amount >= 0 ? 'income' : 'expense'),
+            category: transaction.category?.trim() || undefined,
+          };
+          
+          console.log(`[Cashflow] Sending entry data:`, entryData);
+          const result = await api.addCashflow(entryData);
+          console.log(`[Cashflow] Import result for transaction ${i + 1}:`, result);
+          imported++;
+        } catch (error: any) {
+          failed++;
+          const errorMsg = `Transaction ${i + 1} failed: ${error.message || 'Unknown error'}`;
+          console.error(`[Cashflow] ${errorMsg}`, error);
+          errors.push(errorMsg);
+        }
       }
+      
+      console.log(`[Cashflow] Import complete: ${imported} imported, ${failed} failed`);
       
       setShowPreviewModal(false);
       setParsedTransactions([]);
-      loadData();
-      alert(`Successfully imported ${imported} transaction${imported !== 1 ? 's' : ''}`);
-    } catch (error) {
-      alert('Failed to import some transactions. Please try again.');
+      await loadData();
+      
+      if (failed > 0) {
+        alert(`Imported ${imported} transaction${imported !== 1 ? 's' : ''}, but ${failed} failed:\n${errors.join('\n')}`);
+      } else {
+        alert(`Successfully imported ${imported} transaction${imported !== 1 ? 's' : ''}`);
+      }
+    } catch (error: any) {
+      console.error('[Cashflow] Import error:', error);
+      alert(`Failed to import transactions: ${error.message || 'Unknown error'}`);
+    } finally {
+      setImporting(false);
+      setImportProgress({ current: 0, total: 0 });
     }
   };
 
@@ -576,23 +649,58 @@ export default function Cashflow() {
               </p>
             )}
 
+            {/* Import Progress Bar */}
+            {importing && (
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Importing transactions...
+                  </span>
+                  <span className="text-sm text-blue-600 dark:text-blue-400">
+                    {importProgress.current} / {importProgress.total}
+                  </span>
+                </div>
+                <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-blue-500 dark:bg-blue-500 h-full transition-all duration-300 ease-out rounded-full"
+                    style={{
+                      width: `${(importProgress.current / importProgress.total) * 100}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                  Please wait while transactions are being imported...
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => {
                   setShowPreviewModal(false);
                   setParsedTransactions([]);
                 }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+                disabled={importing}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImportTransactions}
-                disabled={parsedTransactions.length === 0}
+                disabled={parsedTransactions.length === 0 || importing}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                <Check className="w-4 h-4" />
-                Import {parsedTransactions.length} Transaction{parsedTransactions.length !== 1 ? 's' : ''}
+                {importing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Import {parsedTransactions.length} Transaction{parsedTransactions.length !== 1 ? 's' : ''}
+                  </>
+                )}
               </button>
             </div>
           </div>

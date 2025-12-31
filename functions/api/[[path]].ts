@@ -382,15 +382,57 @@ export async function onRequest(context: any) {
     }
 
     if (path === 'cashflow' && method === 'POST') {
-      const body = await request.json();
-      const { userId, ...entry } = body;
-      const key = userId ? getUserKey(userId, 'cashflow') : 'cashflow';
-      const cashflow = (await kv.get(key, 'json')) || [];
-      entry.id = Date.now().toString();
-      entry.createdAt = new Date().toISOString();
-      cashflow.push(entry);
-      await kv.put(key, JSON.stringify(cashflow));
-      return new Response(JSON.stringify(entry), { headers });
+      try {
+        const body = await request.json();
+        console.log('[API] POST /cashflow - Received body:', JSON.stringify(body));
+        const { userId, ...entry } = body;
+        console.log('[API] POST /cashflow - Extracted entry:', JSON.stringify(entry));
+        console.log('[API] POST /cashflow - UserId:', userId);
+        
+        // Validate required fields
+        if (!entry.date) {
+          console.error('[API] POST /cashflow - Missing date');
+          return new Response(JSON.stringify({ error: 'Missing required field: date' }), {
+            status: 400,
+            headers,
+          });
+        }
+        if (!entry.description) {
+          console.error('[API] POST /cashflow - Missing description');
+          return new Response(JSON.stringify({ error: 'Missing required field: description' }), {
+            status: 400,
+            headers,
+          });
+        }
+        if (entry.amount === undefined || entry.amount === null || isNaN(entry.amount)) {
+          console.error('[API] POST /cashflow - Invalid amount:', entry.amount);
+          return new Response(JSON.stringify({ error: 'Invalid or missing amount' }), {
+            status: 400,
+            headers,
+          });
+        }
+        
+        const key = userId ? getUserKey(userId, 'cashflow') : 'cashflow';
+        console.log('[API] POST /cashflow - Using key:', key);
+        const cashflow = (await kv.get(key, 'json')) || [];
+        console.log('[API] POST /cashflow - Current cashflow entries:', cashflow.length);
+        
+        entry.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        entry.createdAt = new Date().toISOString();
+        console.log('[API] POST /cashflow - Created entry with id:', entry.id);
+        
+        cashflow.push(entry);
+        await kv.put(key, JSON.stringify(cashflow));
+        console.log('[API] POST /cashflow - Successfully saved entry');
+        
+        return new Response(JSON.stringify(entry), { headers });
+      } catch (error: any) {
+        console.error('[API] POST /cashflow - Error:', error);
+        return new Response(JSON.stringify({ error: error.message || 'Failed to add cashflow entry' }), {
+          status: 500,
+          headers,
+        });
+      }
     }
 
     if (path.startsWith('cashflow/') && method === 'PUT') {
